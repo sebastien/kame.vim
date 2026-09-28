@@ -1,0 +1,61 @@
+# Showcase: every Kame syntactic feature in one file.
+# Second line of # comments.
+include ./rules/common.kmk
+include "./lib/extra.km"
+include ../shared/base.kmk
+
+VERSION = "1.2.3"
+FLAG! = :debug
+READY? = :true
+COUNT = 1_000
+RATIO = -3.5
+HEX = 0xFF_00
+BIN = 0b1010_01
+OCT = 0o755
+FLOAT = 1.5e-3
+SYM = :my-symbol
+BOOLS = [:true :false :nil]
+NAMES = (wildcard ./src/*.c)
+MESSAGE = "building @(count SOURCES) for @{TARGET} with {(VERSION)}"
+SPACED = "{( COMPUTED )}"
+ESCAPED = "show \@not-a-template \{literal\} \\ done"
+CONFIG = [name: "app" path: ./src workers: 4 enabled: :true mode: :release]
+PIPE = (filter SOURCES | (match ./{**}/{*}.c))
+SPECIAL = (def greeting "hi")
+OTHER = (let x 1)
+MORE = (eval COMPUTED)
+COND = (? FLAG "yes" "no")
+(source object) = (replace ./{**}/{*}.c ./build/{_0}/{_1}.o object)
+(single) = (echo ./single.c)
+
+default : ./build/app
+
+./build/{name}.o : ./src/{name}.c
+	cc -c @< -o @>
+./build/app : ./build/main.o ./build/util.o
+	cc @>* -o @> # link
+../dist/app : ./build/app /tmp/stage/app
+	cp @<1 @> && echo "staged @{VERSION} ({(VERSION)})"
+task cached : ./build/app
+	echo "cached $(date) by $USER"
+service server : ./build/app
+	./build/app --watch --port 8080
+report : ./build/app
+	@(out "built @(count SOURCES) files\n")
+	title="release @>-1"; echo "$title"
+	echo input:@< output:@> args:@_ all:@* count:@# first:@1 range:@1..2
+	echo in-star:@<* in-hash:@<# in-1:@<2 in-range:@<1..2
+	echo out-star:@>* out-hash:@># out-1:@>2
+	echo esc-\@ esc-\\ esc-\{ esc-\} end
+	if [ -f ./build/app ]; then
+		cat <<-EOF
+		heredoc @< input and @{REF} and @(compute "x")
+		EOF
+	fi
+./archive/{year:[0-9][0-9][0-9][0-9]}/{month:??}/{day:*}.txt : ./data/{year}/{month}/{day}.csv
+	process --glob "**/*.csv" --single "*.c" --any "file?.c"
+
+clean :
+	rm -rf ./build ../dist /tmp/stage
+
+// Second comment style.

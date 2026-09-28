@@ -125,3 +125,14 @@ as Kame despite Vim's built-in Makefile detection. It requires Neovim on
 ./test/run.sh
 ```
 
+`test/showcase.km` exercises every `kame*` group. Render it to the terminal
+with true-color ANSI taken from Neovim's own highlighting, followed by a
+legend showing each group in its own style. Your nvim config is used by
+default (so you see your colorscheme); the local checkout is prepended to
+`runtimepath`:
+
+```sh
+./test/preview.sh [file] [--no-shell] [--clean]
+```
+
+
