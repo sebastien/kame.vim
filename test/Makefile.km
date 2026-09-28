@@ -1,0 +1,6 @@
+# Filetype-detection fixture: Vim's built-in Makefile detection also matches
+# this name, so it must still be detected as Kame.
+default : ./build/app
+
+./build/app : ./build/main.o
+	cc -o @> @<
