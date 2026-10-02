@@ -10,7 +10,7 @@ default : ./build/app
 ./build/app : ./build/main.o ./build/util.o
 	cc @>* -o @> # link
 ../dist/app : ./build/app /tmp/stage/app
-	cp @<1 @> && echo "staged @{VERSION} ({(VERSION)})"
+	cp @<1 @> && echo "staged @(VERSION) ({(VERSION)})"
 task cached : ./build/app
 	echo "cached $(date) by $USER"
 service server : ./build/app
@@ -24,7 +24,7 @@ report : ./build/app
 	echo esc-\@ esc-\\ esc-\{ esc-\} end
 	if [ -f ./build/app ]; then
 		cat <<-EOF
-		heredoc @< input and @{REF} and @(compute "x")
+		heredoc @< input and @(REF) and @(compute "x")
 		EOF
 	fi
 ./archive/{year:[0-9][0-9][0-9][0-9]}/{month:??}/{day:*}.txt : ./data/{year}/{month}/{day}.csv

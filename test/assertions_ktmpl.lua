@@ -75,15 +75,15 @@ expect(12, 'post.url', 'kameReference')
 expect(12, 'post.title', 'kameReference')
 
 -- Directive lines, whole-line and keyword-gated, inside the host comment style.
-expect(8, '@if', 'kameRecipeDirective')
-expect(10, '@for', 'kameRecipeDirective')
-expect(13, '@end', 'kameRecipeDirective')
-expect(14, '@else', 'kameRecipeDirective')
-expect(16, '@end', 'kameRecipeDirective')
+expect(8, '@if', 'kameTemplateDirective')
+expect(10, '@for', 'kameTemplateDirective')
+expect(13, '@end', 'kameTemplateDirective')
+expect(14, '@else', 'kameTemplateDirective')
+expect(16, '@end', 'kameTemplateDirective')
 
 -- The directive is only the keyword; its argument list belongs to the host
 -- region and stays host text.
-reject(8, '(page.posts)', 'kameRecipeDirective')
+reject(8, '(page.posts)', 'kameTemplateDirective')
 
 -- Host text keeps its own highlighting under the overlay. Skipped when no PAML
 -- syntax is installed, since the host groups do not exist then.

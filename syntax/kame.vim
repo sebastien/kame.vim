@@ -77,7 +77,7 @@ endif
 " ---------------------------------------------------------------------------
 if s:template
   " Inline expansions.
-  syn cluster kameValueGroup contains=kameExpression,kameList,kameString,kameInterpolation,kameNumber,kameBoolean,kameSymbol,kameName,kameRecordKey,kamePath,kameCapture,kameSpecialForm,kameOperator,kameComparisonOperator,kameReference,kamePlaceholder,kameCommandSubstitution
+  syn cluster kameValueGroup contains=kameExpression,kameList,kameString,kameInterpolation,kameNumber,kameBoolean,kameSymbol,kameVariable,kameName,kameFunctionCall,kameStdlibFunction,kameRecordKey,kamePath,kameCapture,kameSpecialForm,kameOperator,kameComparisonOperator,kameReference,kamePlaceholder,kameCommandSubstitution
 
   syn region kameExpression matchgroup=kameDelimiter start=/(/ end=/)/ contained contains=@kameValueGroup
   syn region kameList matchgroup=kameDelimiter start=/\[/ end=/\]/ contained contains=@kameValueGroup
@@ -89,7 +89,10 @@ if s:template
   syn match kameNumber /-\?\%([0-9A-Za-z_]\)\@<!\d\%(_\?\d\)*\%(\.\d\%(_\?\d\)*\)\?\%([eE][+-]\?\d\%(_\?\d\)*\)\?\>/ contained
   syn match kameSymbol /:[A-Za-z_][A-Za-z0-9_-]*/ contained
   syn match kameBoolean /:\%(true\|false\|nil\)\>/ contained
+  syn match kameVariable /\<[A-Z][A-Z0-9_]*\ze\%([^A-Za-z0-9_-]\|$\)/ contained
   syn match kameName /\<[A-Za-z_][A-Za-z0-9_-]*[?!]\?\ze\%([^A-Za-z0-9_-]\|$\)/ contained
+  syn match kameFunctionCall /\<[a-z][A-Za-z0-9_-]*[?!]\?\ze\%([^A-Za-z0-9_-]\|$\)/ contained
+  syn keyword kameStdlibFunction not bool str count first nth list nop apply map flatmap filter filter-out reduce concat slice sorted unique join split strip replace includes? starts? ends? uppercase lowercase cat text render basename dirname splitext ext joinpath relpath abspath read exists? stat wildcard write env shell out err yield contained
   syn match kameRecordKey /[A-Za-z_][A-Za-z0-9_-]*:/ contained
   syn match kameReference /[A-Za-z_][A-Za-z0-9_-]*\%(\.[A-Za-z0-9_+{},.-]\+\)\+/ contained
   syn match kamePlaceholder /_\{2,}\ze\%([^A-Za-z0-9_]\|$\)/ contained
@@ -106,7 +109,6 @@ if s:template
   syn region kameString start=/"/ skip=/\\./ end=/"/ contained
   syn region kameString start=/"""/ end=/"""/ keepend contained
   syn region kameInterpolation matchgroup=kameInterpolationDelimiter start=/{(/ end=/)}/ contained contains=@kameValueGroup
-  syn match kameTemplateReference /@{[^}]*}/ contained
   syn region kameCommandSubstitution matchgroup=kameCommandSubstitutionDelimiter start=/\$(/ end=/)/ contained
 
   " Inline @(EXPRESSION): the native document-template form. Selectors are
@@ -136,21 +138,21 @@ if s:template
   let s:kw = '@\%(if\|elif\|else\|for\|with\|let\|include\|raw\|end\)\>'
   let s:plainTail = '\%(([^)]*)\)\?\s*$'
   let s:cTail = '\%(([^)]*)\)\?\s*$'
-  execute 'syn match kameRecipeDirective /\%(^\s*\)\@<=' . s:kw . '\ze' . s:plainTail . '/ containedin=ALL'
-  execute 'syn match kameRecipeDirective /\%(^\s*#\s*\)\@<=' . s:kw . '\ze' . s:cTail . '/ containedin=ALL'
-  execute 'syn match kameRecipeDirective /\%(^\s*\/\/\s*\)\@<=' . s:kw . '\ze' . s:cTail . '/ containedin=ALL'
-  execute 'syn match kameRecipeDirective /\%(^\s*;\s*\)\@<=' . s:kw . '\ze' . s:cTail . '/ containedin=ALL'
-  execute 'syn match kameRecipeDirective /\%(^\s*%\s*\)\@<=' . s:kw . '\ze' . s:cTail . '/ containedin=ALL'
-  execute 'syn match kameRecipeDirective /\%(^\s*--\s*\)\@<=' . s:kw . '\ze' . s:cTail . '/ containedin=ALL'
-  execute 'syn match kameRecipeDirective /\%(^\s*\/\*\s*\)\@<=' . s:kw . '\ze\%(([^)]*)\)\?\s*\*\/\s*$/ containedin=ALL'
-  execute 'syn match kameRecipeDirective /\%(^\s*<!--\s*\)\@<=' . s:kw . '\ze\%(([^)]*)\)\?\s*-->\s*$/ containedin=ALL'
+   execute 'syn match kameTemplateDirective /\%(^\s*\)\@<=' . s:kw . '\ze' . s:plainTail . '/ containedin=ALL'
+   execute 'syn match kameTemplateDirective /\%(^\s*#\s*\)\@<=' . s:kw . '\ze' . s:cTail . '/ containedin=ALL'
+   execute 'syn match kameTemplateDirective /\%(^\s*\/\/\s*\)\@<=' . s:kw . '\ze' . s:cTail . '/ containedin=ALL'
+   execute 'syn match kameTemplateDirective /\%(^\s*;\s*\)\@<=' . s:kw . '\ze' . s:cTail . '/ containedin=ALL'
+   execute 'syn match kameTemplateDirective /\%(^\s*%\s*\)\@<=' . s:kw . '\ze' . s:cTail . '/ containedin=ALL'
+   execute 'syn match kameTemplateDirective /\%(^\s*--\s*\)\@<=' . s:kw . '\ze' . s:cTail . '/ containedin=ALL'
+   execute 'syn match kameTemplateDirective /\%(^\s*\/\*\s*\)\@<=' . s:kw . '\ze\%(([^)]*)\)\?\s*\*\/\s*$/ containedin=ALL'
+   execute 'syn match kameTemplateDirective /\%(^\s*<!--\s*\)\@<=' . s:kw . '\ze\%(([^)]*)\)\?\s*-->\s*$/ containedin=ALL'
   " @@ at the directive position emits a literal @; highlight the escape.
   execute 'syn match kameEscape /\%(^\s*\S*\s*\)\@<=@@/ containedin=ALL'
   unlet! s:kw s:plainTail s:cTail
 
   " The overlay entry points, as a cluster hosts can name in their own
   " contains= to let Kame expansions nest inside a host match or region.
-  syn cluster kameTemplate contains=kameTemplateExpression,kameSelectorInput,kameSelectorOutput,kameSelectorArgument,kameEscape,kameRecipeDirective
+   syn cluster kameTemplate contains=kameTemplateExpression,kameSelectorInput,kameSelectorOutput,kameSelectorArgument,kameEscape,kameTemplateDirective
 
   " -------------------------------------------------------------------------
   " Host shims. A host matcher that spans template text can hide the overlay:
@@ -185,7 +187,7 @@ if s:template
   hi def link kameSelectorOutput PreProc
   hi def link kameSelectorArgument Identifier
   hi def link kameEscape SpecialChar
-  hi def link kameRecipeDirective PreProc
+   hi def link kameTemplateDirective PreProc
   hi def link kameComment Comment
   hi def link kameDirective Include
   hi def link kameIncludePath Directory
@@ -193,6 +195,9 @@ if s:template
   hi def link kameBoolean Boolean
   hi def link kameNumber Number
   hi def link kameName Identifier
+  hi def link kameVariable Constant
+  hi def link kameFunctionCall Function
+  hi def link kameStdlibFunction Special
   hi def link kameRecordKey Identifier
   hi def link kameReference Identifier
   hi def link kamePlaceholder Special
@@ -218,10 +223,10 @@ endif
 " Clusters. Value atoms are shared by every source layer; the template and
 " recipe clusters add the embedded expansions.
 " ---------------------------------------------------------------------------
-syn cluster kameValueGroup contains=kameExpression,kameList,kameString,kameInterpolation,kameNumber,kameBoolean,kameSymbol,kameName,kameRecordKey,kamePath,kameCapture,kameSpecialForm,kameOperator,kameComparisonOperator,kameReference,kamePlaceholder,kameCommandSubstitution
-syn cluster kameTemplateGroup contains=kameTemplateExpression,kameTemplateReference,kameSelectorInput,kameSelectorOutput,kameSelectorArgument,kameEscape,kameInterpolation
-syn cluster kameHeaderGroup contains=kameRuleKind,kameRuleSeparator,kameTargetName,kamePath,kameCapture,kameString,kameTemplateExpression,kameTemplateReference,kameEscape
-syn cluster kameRecipeGroup contains=kameTemplateExpression,kameTemplateReference,kameSelectorInput,kameSelectorOutput,kameSelectorArgument,kameEscape,kameRecipeDirective
+syn cluster kameValueGroup contains=kameExpression,kameList,kameString,kameInterpolation,kameNumber,kameBoolean,kameSymbol,kameVariable,kameName,kameFunctionCall,kameStdlibFunction,kameRecordKey,kamePath,kameCapture,kameSpecialForm,kameOperator,kameComparisonOperator,kameReference,kamePlaceholder,kameCommandSubstitution
+syn cluster kameTemplateGroup contains=kameTemplateExpression,kameSelectorInput,kameSelectorOutput,kameSelectorArgument,kameEscape,kameInterpolation
+syn cluster kameHeaderGroup contains=kameRuleKind,kameRuleSeparator,kameTargetName,kamePath,kameCapture,kameString,kameTemplateExpression,kameEscape
+syn cluster kameRecipeGroup contains=kameTemplateExpression,kameSelectorInput,kameSelectorOutput,kameSelectorArgument,kameEscape,kameRecipeDirective
 
 " ---------------------------------------------------------------------------
 " Expressions and lists.
@@ -242,7 +247,10 @@ syn match kameNumber /-\?\%([0-9A-Za-z_]\)\@<!\d\%(_\?\d\)*\%(\.\d\%(_\?\d\)*\)\
 syn match kameSymbol /:[A-Za-z_][A-Za-z0-9_-]*/
 " Boolean after Symbol so :true/:false/:nil win at the same start position.
 syn match kameBoolean /:\%(true\|false\|nil\)\>/
+syn match kameVariable /\<[A-Z][A-Z0-9_]*\ze\%([^A-Za-z0-9_-]\|$\)/
 syn match kameName /\<[A-Za-z_][A-Za-z0-9_-]*[?!]\?\ze\%([^A-Za-z0-9_-]\|$\)/
+syn match kameFunctionCall /\<[a-z][A-Za-z0-9_-]*[?!]\?\ze\%([^A-Za-z0-9_-]\|$\)/
+syn keyword kameStdlibFunction not bool str count first nth list nop apply map flatmap filter filter-out reduce concat slice sorted unique join split strip replace includes? starts? ends? uppercase lowercase cat text render basename dirname splitext ext joinpath relpath abspath read exists? stat wildcard write env shell out err yield contained
 syn match kameTargetName /\<[A-Za-z_][A-Za-z0-9_-]*[?!]\?\ze\%([^A-Za-z0-9_-]\|$\)/ contained
 syn match kameRecordKey /[A-Za-z_][A-Za-z0-9_-]*:/ contained
 
@@ -280,7 +288,6 @@ syn region kameString start=/"/ skip=/\\./ end=/"/ contains=@kameTemplateGroup
 syn region kameString start=/"""/ end=/"""/ keepend
 syn region kameInterpolation matchgroup=kameInterpolationDelimiter start=/{(/ end=/)}/ contained contains=@kameValueGroup
 execute 'syn region kameTemplateExpression matchgroup=kameTemplateDelimiter start=/@(/ end=/)/ contains=@kameValueGroup containedin=' . s:templateContexts
-execute 'syn match kameTemplateReference /@{[^}]*}/ containedin=' . s:templateContexts
 execute 'syn match kameSelectorInput /@<\%([*#]\|[+-]\?\d*\.\.[+-]\?\d*\|[+-]\?\d\+\)\?/ contained containedin=' . s:templateContexts
 execute 'syn match kameSelectorOutput /@>\%([*#]\|[+-]\?\d*\.\.[+-]\?\d*\|[+-]\?\d\+\)\?/ contained containedin=' . s:templateContexts
 execute 'syn match kameSelectorArgument /@\%(_\|\*\|#\|[+-]\?\d*\.\.[+-]\?\d*\|[+-]\?\d\+\)/ contained containedin=' . s:templateContexts
@@ -399,6 +406,9 @@ hi def link kameSymbol Constant
 hi def link kameBoolean Boolean
 hi def link kameNumber Number
 hi def link kameName Identifier
+hi def link kameVariable Constant
+hi def link kameFunctionCall Function
+hi def link kameStdlibFunction Special
 hi def link kameRecordKey Identifier
 hi def link kameReference Identifier
 hi def link kamePlaceholder Special
@@ -414,7 +424,6 @@ hi def link kameInterpolation Special
 hi def link kameInterpolationDelimiter Special
 hi def link kameTemplateExpression Special
 hi def link kameTemplateDelimiter Special
-hi def link kameTemplateReference PreProc
 hi def link kameSelectorInput Special
 hi def link kameSelectorOutput PreProc
 hi def link kameSelectorArgument Identifier

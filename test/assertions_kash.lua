@@ -74,7 +74,7 @@ expect(11, '$result', 'kameKashReference')
 expect(12, '?', 'kameKashAcceptance')
 expect(13, '?', 'kameKashAcceptance')
 expect(14, '@(map', 'kameTemplateDelimiter')
-expect(14, 'map', 'kameName')
+expect(14, 'map', 'kameStdlibFunction')
 expect(15, '@NAME', 'kameKashMeta')
 expect(15, ';', 'kameKashSeparator')
 

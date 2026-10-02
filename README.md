@@ -1,7 +1,7 @@
 # kame.vim
 
 Vim filetype detection, syntax highlighting, formatting, and parse diagnostics
-for the Kame build system.
+for the [Kame](https://github.com/sebastien/kame) build system.
 
 ## Installation
 
@@ -83,7 +83,7 @@ A rule-program recipe body (`.kmk`, `Kamefile`) is highlighted with the Kash
 layer by default, since Kash is composed into rule programs, including command
 arguments, pipelines, redirections, and `$REFERENCE` / `@(EXPRESSION)` /
 `$(COMMAND)` expansions, with Kame string-template expansions (`@(expression)`,
-`@{reference}`, selectors, and `{(...)}` interpolation) layered on top.
+selectors, and `{(...)}` interpolation) layered on top.
 
 Set `g:kame_recipe_lang` before the syntax loads to choose the recipe language:
 
@@ -134,7 +134,6 @@ Highlight groups and their default links:
 | `kameInterpolationDelimiter` | `Special` | `{(` and `)}` |
 | `kameTemplateExpression` | `Special` | `@(...)` expansions |
 | `kameTemplateDelimiter` | `Special` | `@(` and `)` |
-| `kameTemplateReference` | `PreProc` | `@{...}` references |
 | `kameSelectorInput` | `Special` | `@<...` selectors |
 | `kameSelectorOutput` | `PreProc` | `@>...` selectors |
 | `kameSelectorArgument` | `Identifier` | `@_`, `@*`, `@#`, `@N` selectors |
@@ -142,6 +141,7 @@ Highlight groups and their default links:
 | `kameCommandSubstitution` | `Special` | `$(COMMAND)` substitution |
 | `kameCommandSubstitutionDelimiter` | `Special` | `$(` and `)` |
 | `kameRecipeDirective` | `PreProc` | recipe directive lines `@if`, `@else`, `@end`, ... |
+| `kameTemplateDirective` | `PreProc` | document-template directive lines `@if`, `@for`, `@end`, ... |
 | `kameKashKeyword` | `Conditional` | `if`, `elif`, `else`, `match`, `case` |
 | `kameKashCommand` | `Function` | executable words |
 | `kameKashOption` | `Identifier` | `-c`, `--watch`, `-O2` |
@@ -159,6 +159,9 @@ Highlight groups and their default links:
 | `kameDefinitionOperator` | `Operator` | the `=` in a definition |
 | `kameFunctionName` | `Function` | function definition name |
 | `kameFunctionParameter` | `Identifier` | function parameters |
+| `kameVariable` | `Constant` | UPPER_CASE variable references |
+| `kameFunctionCall` | `Function` | lowercase and kebab-case function references |
+| `kameStdlibFunction` | `Special` | standard-library operation names (including build effects) |
 
 Override any of them with `:hi! link` or `:hi`, for example:
 
