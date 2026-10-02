@@ -6,6 +6,14 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 km_fixture="$root/test/fixture.km"
 kmk_fixture="$root/test/fixture.kmk"
 kash_fixture="$root/test/fixture.kash"
+ktmpl_fixture="$root/test/fixture.paml.ktmpl"
+
+# Optional extra runtimepath for host syntaxes used by .ktmpl tests. Set
+# KAME_HOST_RUNTIME to the directory holding the PAML (or other host) syntax/
+# tree; when unset, only the template overlay is checked and host checks are
+# skipped. Example:
+#   KAME_HOST_RUNTIME=~/Workspace/Perso/dotnvim/src/vim ./test/run.sh
+host_runtime="${KAME_HOST_RUNTIME:-}"
 
 run_kmk() {
   nvim --headless -u NONE -i NONE -n \
@@ -44,16 +52,32 @@ nvim --headless -u NONE -i NONE -n \
   -c 'qa!' \
   "$kash_fixture"
 
+echo 'document template highlighting (.paml.ktmpl):'
+# Enable filetype before plugins load, as a normal session does (init runs
+# before plugin/), so kame's BufReadPost correction is registered after the
+# host's ftdetect. Enabling filetype after load is the reverse of real order.
+nvim --headless -u NONE -i NONE -n \
+  --cmd "set runtimepath^=$root" \
+  ${host_runtime:+--cmd "set runtimepath^=$host_runtime"} \
+  --cmd 'filetype on' \
+  --cmd 'syntax on' \
+  --cmd 'set loadplugins' \
+  --cmd 'runtime! plugin/**/*.vim' \
+  -c "luafile $root/test/assertions_ktmpl.lua" \
+  -c 'qa!' \
+  "$ktmpl_fixture"
+
 detect() {
-  local label="$1" file="$2" expected_lang="$3"
+  local label="$1" file="$2" expected_lang="$3" expected_host="${4:-}"
   nvim --headless -u NONE -i NONE -n \
     --cmd "set runtimepath^=$root" \
+    --cmd 'filetype on' \
     --cmd 'set loadplugins' \
     --cmd 'runtime! plugin/**/*.vim' \
-    --cmd 'filetype on' \
     -c "edit $file" \
     -c "lua if vim.bo.filetype ~= 'kame' then io.stderr:write('$label: expected filetype kame, got ' .. vim.bo.filetype .. '\n') vim.cmd('cquit 1') end" \
     -c "lua if '$expected_lang' ~= '' and vim.b.kame_lang ~= '$expected_lang' then io.stderr:write('$label: expected kame_lang $expected_lang, got ' .. tostring(vim.b.kame_lang) .. '\n') vim.cmd('cquit 1') end" \
+    -c "lua if '$expected_host' ~= '' and vim.b.kame_host ~= '$expected_host' then io.stderr:write('$label: expected kame_host $expected_host, got ' .. tostring(vim.b.kame_host) .. '\n') vim.cmd('cquit 1') end" \
     -c 'qa!'
 }
 
@@ -75,5 +99,7 @@ kamefile="$(mktemp -d)/Kamefile"
 cp "$kmk_fixture" "$kamefile"
 detect 'Kamefile' "$kamefile" 'rule'
 rm -rf "$(dirname "$kamefile")"
+# .HOST.ktmpl is the template layer, and the segment before .ktmpl names the host.
+detect 'fixture.paml.ktmpl' "$ktmpl_fixture" 'template' 'paml'
 
 echo 'kame syntax: ok'

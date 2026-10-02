@@ -1,0 +1,31 @@
+# Showcase: every Kame Kash feature in one file.
+title = "Little publication"
+names = ["hello world.txt" "second.txt"]
+(label name) = (uppercase name)
+
+git status --short
+build | tee ./build.log
+watch-assets &
+:timeout @(10) npm test
+: cwd ./src
+result = $(git rev-parse --short HEAD) ?? "unknown"
+echo revision=$result
+grep -q needle missing-file?
+deploy ? echo "deployment failed"
+printf "[%s]\n" @(map names label)
+@NAME reserved; echo "a;b"; echo done
+echo in:$title out:${title} ref:$options.release
+echo redirect > ./out.txt && cat < ./out.txt >> ./log.txt
+
+if @(options.release)
+	cc -O2 -o build/app src/app.c
+elif test -f ./build/app
+	echo present
+else
+	report "nothing to build"
+
+match @(target)
+	case ./src/{name:*}.c
+		cc -c ${name}.c
+	else
+		report unknown

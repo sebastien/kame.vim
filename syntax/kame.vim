@@ -23,6 +23,27 @@ if empty(s:lang)
 endif
 let s:kash_top = s:lang ==# 'kash'
 let s:rule = s:lang ==# 'rule'
+let s:template = s:lang ==# 'template'
+
+" ---------------------------------------------------------------------------
+" Document template layer (.HOST.ktmpl). The host language is the outer layer;
+" Kame directives and inline expansions are layered on top. Detection records
+" b:kame_host and b:kame_host_syntax; fall back to kame#host_syntax so
+" `set filetype=kame` and an explicit g:kame_host_syntax still work.
+" ---------------------------------------------------------------------------
+if s:template
+  let s:host_syntax = get(b:, 'kame_host_syntax', '')
+  if empty(s:host_syntax)
+    let s:host_syntax = kame#host_syntax(expand('%:p'))
+  endif
+  if !empty(s:host_syntax)
+    execute 'syn include @kameHost syntax/' . s:host_syntax . '.vim'
+    unlet! b:current_syntax
+    let s:hostContains = '@kameHost'
+  else
+    let s:hostContains = ''
+  endif
+endif
 
 " ---------------------------------------------------------------------------
 " Recipe language: kash (default), shell, or none. g:kame_no_shell_syntax is
@@ -45,6 +66,152 @@ if s:rule && s:recipe ==# 'shell'
   let s:templateContexts = 'kameRecipe,kameString,sh.*'
 else
   let s:templateContexts = 'kameRecipe,kameString'
+endif
+
+" ---------------------------------------------------------------------------
+" Document template layer (.HOST.ktmpl). A template is host text plus Kame
+" directive lines and inline expansions; the host syntax is embedded above.
+" Document templates use the value/expression grammar inside @(...); they do
+" not use the rule, recipe, or Kash layers, and $REF / ${REF} / $(COMMAND) are
+" emitted literally (016-templates.md), so those forms are not defined here.
+" ---------------------------------------------------------------------------
+if s:template
+  " Inline expansions.
+  syn cluster kameValueGroup contains=kameExpression,kameList,kameString,kameInterpolation,kameNumber,kameBoolean,kameSymbol,kameName,kameRecordKey,kamePath,kameCapture,kameSpecialForm,kameOperator,kameComparisonOperator,kameReference,kamePlaceholder,kameCommandSubstitution
+
+  syn region kameExpression matchgroup=kameDelimiter start=/(/ end=/)/ contained contains=@kameValueGroup
+  syn region kameList matchgroup=kameDelimiter start=/\[/ end=/\]/ contained contains=@kameValueGroup
+
+  " Value atoms: only meaningful inside @(...), so every one is contained.
+  syn match kameNumber /-\?\%([0-9A-Za-z_]\)\@<!0[xX][0-9A-Fa-f]\%(_\?[0-9A-Fa-f]\)*\>/ contained
+  syn match kameNumber /-\?\%([0-9A-Za-z_]\)\@<!0[bB][01]\%(_\?[01]\)*\>/ contained
+  syn match kameNumber /-\?\%([0-9A-Za-z_]\)\@<!0[oO][0-7]\%(_\?[0-7]\)*\>/ contained
+  syn match kameNumber /-\?\%([0-9A-Za-z_]\)\@<!\d\%(_\?\d\)*\%(\.\d\%(_\?\d\)*\)\?\%([eE][+-]\?\d\%(_\?\d\)*\)\?\>/ contained
+  syn match kameSymbol /:[A-Za-z_][A-Za-z0-9_-]*/ contained
+  syn match kameBoolean /:\%(true\|false\|nil\)\>/ contained
+  syn match kameName /\<[A-Za-z_][A-Za-z0-9_-]*[?!]\?\ze\%([^A-Za-z0-9_-]\|$\)/ contained
+  syn match kameRecordKey /[A-Za-z_][A-Za-z0-9_-]*:/ contained
+  syn match kameReference /[A-Za-z_][A-Za-z0-9_-]*\%(\.[A-Za-z0-9_+{},.-]\+\)\+/ contained
+  syn match kamePlaceholder /_\{2,}\ze\%([^A-Za-z0-9_]\|$\)/ contained
+  syn match kamePlaceholder /_\d\+\ze\%([^A-Za-z0-9_]\|$\)/ contained
+  syn match kamePlaceholder /_\ze\%([^A-Za-z0-9_]\|$\)/ contained
+  syn match kamePath /\%(\.\.\?\)\?\/\%([^{}()\[\] \t|]\+\|{[^}() \t]*}\)*/ contained contains=kameCapture
+  syn region kameCapture start=/{/ end=/}/ contained contains=kameCaptureName,kameCapturePattern
+  syn match kameCaptureName /[A-Za-z_][A-Za-z0-9_-]*\ze\%(:\|}\)/ contained
+  syn match kameCapturePattern /:\zs\%([*?]\|\[\%([!^]\?[^]]*\)\]\)\+\ze}/ contained
+  syn keyword kameSpecialForm def let eval if and or match with contained
+  syn match kameSpecialForm /([ \t]*\zs?/ contained
+  syn match kameOperator /|/ contained
+  syn match kameComparisonOperator /==\|!=\|<=\|>=\|=\|<\|>/ contained
+  syn region kameString start=/"/ skip=/\\./ end=/"/ contained
+  syn region kameString start=/"""/ end=/"""/ keepend contained
+  syn region kameInterpolation matchgroup=kameInterpolationDelimiter start=/{(/ end=/)}/ contained contains=@kameValueGroup
+  syn match kameTemplateReference /@{[^}]*}/ contained
+  syn region kameCommandSubstitution matchgroup=kameCommandSubstitutionDelimiter start=/\$(/ end=/)/ contained
+
+  " Inline @(EXPRESSION): the native document-template form. Selectors are
+  " shared with recipes; Kame escape sequences \@ and \\ are recognized so an
+  " escaped @ is treated as host text by the template renderer.
+  "
+  " containedin=ALL lets these entry points appear inside host regions (a
+  " comment, an attribute value, a string) whose own contains list knows
+  " nothing about Kame, which is the whole point of layering over an arbitrary
+  " host language.
+  syn region kameTemplateExpression matchgroup=kameTemplateDelimiter start=/@(/ end=/)/ contains=@kameValueGroup containedin=ALL
+  syn match kameSelectorInput /@<\%([*#]\|[+-]\?\d*\.\.[+-]\?\d*\|[+-]\?\d\+\)\?/ containedin=ALL
+  syn match kameSelectorOutput /@>\%([*#]\|[+-]\?\d*\.\.[+-]\?\d*\|[+-]\?\d\+\)\?/ containedin=ALL
+  syn match kameSelectorArgument /@\%(_\|\*\|#\|[+-]\?\d*\.\.[+-]\?\d*\|[+-]\?\d\+\)/ containedin=ALL
+  syn match kameEscape /\\[@\\]/ containedin=ALL
+
+  " Directive lines. A directive is keyword-gated and whole-line: nothing but
+  " the host comment prefix may precede @keyword, and nothing but an optional
+  " "(...)" argument list, the comment suffix, and whitespace may follow.
+  " Directive lines are recognized for every comment style plus the bare plain
+  " style; the keyword highlights, the wrapper stays host text.
+  "
+  " The head is a lookbehind so the syntax item starts at @, not at the comment
+  " prefix. Host syntaxes commonly claim the prefix char with their own matcher
+  " (PAML's tag match, for example); starting at @ keeps the overlay independent
+  " of that, while the lookbehind still enforces the whole-line gate.
+  let s:kw = '@\%(if\|elif\|else\|for\|with\|let\|include\|raw\|end\)\>'
+  let s:plainTail = '\%(([^)]*)\)\?\s*$'
+  let s:cTail = '\%(([^)]*)\)\?\s*$'
+  execute 'syn match kameRecipeDirective /\%(^\s*\)\@<=' . s:kw . '\ze' . s:plainTail . '/ containedin=ALL'
+  execute 'syn match kameRecipeDirective /\%(^\s*#\s*\)\@<=' . s:kw . '\ze' . s:cTail . '/ containedin=ALL'
+  execute 'syn match kameRecipeDirective /\%(^\s*\/\/\s*\)\@<=' . s:kw . '\ze' . s:cTail . '/ containedin=ALL'
+  execute 'syn match kameRecipeDirective /\%(^\s*;\s*\)\@<=' . s:kw . '\ze' . s:cTail . '/ containedin=ALL'
+  execute 'syn match kameRecipeDirective /\%(^\s*%\s*\)\@<=' . s:kw . '\ze' . s:cTail . '/ containedin=ALL'
+  execute 'syn match kameRecipeDirective /\%(^\s*--\s*\)\@<=' . s:kw . '\ze' . s:cTail . '/ containedin=ALL'
+  execute 'syn match kameRecipeDirective /\%(^\s*\/\*\s*\)\@<=' . s:kw . '\ze\%(([^)]*)\)\?\s*\*\/\s*$/ containedin=ALL'
+  execute 'syn match kameRecipeDirective /\%(^\s*<!--\s*\)\@<=' . s:kw . '\ze\%(([^)]*)\)\?\s*-->\s*$/ containedin=ALL'
+  " @@ at the directive position emits a literal @; highlight the escape.
+  execute 'syn match kameEscape /\%(^\s*\S*\s*\)\@<=@@/ containedin=ALL'
+  unlet! s:kw s:plainTail s:cTail
+
+  " The overlay entry points, as a cluster hosts can name in their own
+  " contains= to let Kame expansions nest inside a host match or region.
+  syn cluster kameTemplate contains=kameTemplateExpression,kameSelectorInput,kameSelectorOutput,kameSelectorArgument,kameEscape,kameRecipeDirective
+
+  " -------------------------------------------------------------------------
+  " Host shims. A host matcher that spans template text can hide the overlay:
+  " Vim picks the item that starts first, and a match without contains= cannot
+  " nest another item. containedin=ALL covers host regions, but not host
+  " matches. For PAML (the first .ktmpl host) re-declare the matches that run
+  " over template text so they carry contains=@kameTemplate. Guarded so a host
+  " rename or a different PAML build does not error.
+  " -------------------------------------------------------------------------
+  if s:host_syntax ==# 'paml' && hlexists('pamlLabel')
+    " pamlLabel is ":.*": everything after ':' runs to end of line. Redefining
+    " it is what lets `@(...)` in a label (e.g. `<title:@(title)`) be seen:
+    " without contains= a host match cannot nest another syntax item.
+    syn match pamlLabel /:.*/ contained contains=@kameTemplate
+    " Attribute values run to ',' or ')'.
+    syn match pamlAttributeVal /[^,\)]*/ contained contains=@kameTemplate
+    " The attribute region. pamlAttributeVal is reached through pamlAttribute's
+    " nextgroup, not listed directly: listing it would let its longer `[^,\)]*`
+    " match beat pamlAttribute at the same start. The end chains back to
+    " pamlLabel and pamlClass so a tag whose label follows its attributes
+    " (`<a(href=...): label`) still highlights the label; stock PAML stops at ')'.
+    syn region pamlAttributes start=+(+ end=+)+ contains=pamlAttribute,pamlAttributeSep,@kameTemplate nextgroup=pamlLabel,pamlClass,pamlClassSep
+    " The tag. Keep @kameTemplate in nextgroup so a tag whose text is a bare
+    " expansion (`<h1 @(heading)`) reaches the overlay.
+    syn match pamlTag /\s*<\w*[^\W\(\.#:]/ nextgroup=pamlId,pamlClassSep,pamlLabel,pamlAttributes,pamlClass,@kameTemplate
+  endif
+
+  " Highlighting for the template layer.
+  hi def link kameTemplateExpression Special
+  hi def link kameTemplateDelimiter Special
+  hi def link kameSelectorInput Special
+  hi def link kameSelectorOutput PreProc
+  hi def link kameSelectorArgument Identifier
+  hi def link kameEscape SpecialChar
+  hi def link kameRecipeDirective PreProc
+  hi def link kameComment Comment
+  hi def link kameDirective Include
+  hi def link kameIncludePath Directory
+  hi def link kameSymbol Constant
+  hi def link kameBoolean Boolean
+  hi def link kameNumber Number
+  hi def link kameName Identifier
+  hi def link kameRecordKey Identifier
+  hi def link kameReference Identifier
+  hi def link kamePlaceholder Special
+  hi def link kamePath Directory
+  hi def link kameCapture Type
+  hi def link kameCaptureName Identifier
+  hi def link kameCapturePattern SpecialChar
+  hi def link kameSpecialForm Statement
+  hi def link kameOperator Operator
+  hi def link kameComparisonOperator Operator
+  hi def link kameString String
+  hi def link kameInterpolation Special
+  hi def link kameInterpolationDelimiter Special
+  hi def link kameCommandSubstitution Special
+  hi def link kameCommandSubstitutionDelimiter Special
+  hi def link kameDelimiter Delimiter
+
+  let b:current_syntax = 'kame'
+  finish
 endif
 
 " ---------------------------------------------------------------------------

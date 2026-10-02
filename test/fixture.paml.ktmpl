@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html
+	<head
+		<meta(charset=utf-8)
+		<title:Kame ―  @(page.title)
+	<body
+		<h1 @(page.heading)
+		<!-- @if(page.posts) -->
+		<ul
+			<!-- @for([post] page.posts) -->
+			<li
+				<a(href=@(post.url)): @(post.title)
+			<!-- @end -->
+		<!-- @else -->
+		<p: no posts
+		<!-- @end -->
+</html>

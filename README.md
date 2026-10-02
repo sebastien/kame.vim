@@ -179,12 +179,31 @@ and `.kmd`. It requires Neovim on `PATH`:
 ./test/run.sh
 ```
 
-`test/showcase.km` and `test/showcase.kmk` exercise every `kame*` group. Render
-one to the terminal with true-color ANSI taken from Neovim's own highlighting,
+`test/showcase.*` exercise every `kame*` group across the source types. Render
+them to the terminal with true-color ANSI taken from Neovim's own highlighting,
 followed by a legend showing each group in its own style. Your nvim config is
 used by default (so you see your colorscheme); the local checkout is prepended
 to `runtimepath`:
 
 ```sh
-./test/preview.sh [file] [--recipe-lang=kash|shell|none] [--clean]
+./test/preview.sh                              # every type in turn
+./test/preview.sh --type=rule                  # one type
+./test/preview.sh test/showcase.kash           # one file
+./test/preview.sh --recipe-lang=shell --clean  # shell recipes, isolated
 ```
+
+With no argument every type is shown, each under a `== type ==` header:
+
+| Type | Fixture | Layer |
+| --- | --- | --- |
+| `expr` | `test/showcase.km` | `expr` value program |
+| `script` | `test/showcase.script.kmk` | `rule` layer, script composition (definitions and expressions) |
+| `rule` | `test/showcase.kmk` | `rule` layer, headers, captures, and recipes |
+| `template` | `test/showcase.paml.ktmpl` | `template` layer over a PAML host |
+| `kash` | `test/showcase.kash` | `kash` process language |
+
+`script` and `rule` are both `.kmk` scripts (the `rule` layer); they differ in
+what they emphasize. `--type` selects one, and a file argument previews one
+file. The template section needs the host's syntax on `'runtimepath'` (PAML
+here); without it, the host text renders uncolored and the Kame overlay still
+shows. `--recipe-lang`, `--no-shell`, and `--clean` behave as before.

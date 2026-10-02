@@ -16,6 +16,12 @@ if has('nvim')
 local function kame(path)
   return 'kame', function(buf)
     vim.b[buf].kame_lang = vim.fn['kame#lang_of'](path)
+    -- A .ktmpl names its host dialect; record it and the syntax to embed so
+    -- syntax/kame.vim can layer the template over that host.
+    if vim.fn['kame#is_ktmpl'](path) == 1 then
+      vim.b[buf].kame_host = vim.fn['kame#host_of'](path)
+      vim.b[buf].kame_host_syntax = vim.fn['kame#host_syntax'](path)
+    end
   end
 end
 require('vim.filetype').add({
@@ -27,6 +33,7 @@ require('vim.filetype').add({
     ['.*%.kmk'] = { kame, { priority = 100 } },
     ['.*%.kash'] = { kame, { priority = 100 } },
     ['.*%.ksh'] = { kame, { priority = 100 } },
+    ['.*%.ktmpl'] = { kame, { priority = 100 } },
   },
   -- Rule program by file name as well as by suffix.
   filename = {
@@ -35,6 +42,18 @@ require('vim.filetype').add({
 })
 EOF
 endif
+
+" A host plugin may claim a .HOST.ktmpl before Kame: PAML detects `*.paml*`,
+" which matches page.paml.ktmpl. Host detection runs on BufReadPost, and this
+" plugin loads after filetype detection in a normal session, so its BufReadPost
+" runs after the host's and wins. syntax/kame.vim embeds the host itself, so
+" only the outer filetype changes. b:current_syntax may hold the host, so clear
+" it for syntax/kame.vim. Host fields are filled in here too, since host order
+" can leave them unset.
+augroup kame_ktmpl
+  autocmd!
+  autocmd BufReadPost *.ktmpl if kame#is_ktmpl(expand('%:p')) && &filetype !=# 'kame' | unlet! b:current_syntax | let b:kame_lang = 'template' | let b:kame_host = kame#host_of(expand('%:p')) | let b:kame_host_syntax = kame#host_syntax(expand('%:p')) | set filetype=kame | endif
+augroup END
 
 function! s:RunKame(arguments) abort
   let l:command = shellescape(get(g:, 'kame_command', 'kame')) . ' ' . a:arguments

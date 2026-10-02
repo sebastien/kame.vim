@@ -4,6 +4,28 @@
 
 vim.cmd("set termguicolors")
 
+-- The preview must exercise the Kame syntax from this checkout, but the user's
+-- configuration owns filetype detection and can defeat it: vim-polyglot clears
+-- Vim's 'filetypedetect' group (which also disables Neovim's vim.filetype
+-- matcher), and a separately installed Kame copy may claim a suffix first. A
+-- .kash buffer then reaches this point with no filetype at all, while the other
+-- suffixes only lose b:kame_lang (the syntax still falls back to the path).
+-- Resolve the layer here, record it the way detection would, and make sure the
+-- Kame syntax is loaded.
+local preview_file = vim.fn.expand('%:p')
+if preview_file ~= '' then
+  if vim.fn['kame#is_ktmpl'](preview_file) == 1 then
+    vim.b.kame_lang = 'template'
+    vim.b.kame_host = vim.fn['kame#host_of'](preview_file)
+    vim.b.kame_host_syntax = vim.fn['kame#host_syntax'](preview_file)
+  else
+    vim.b.kame_lang = vim.fn['kame#lang_of'](preview_file)
+  end
+  if vim.bo.filetype ~= 'kame' then
+    vim.bo.filetype = 'kame'
+  end
+end
+
 local function hex_to_rgb(hex)
   hex = hex:gsub("#", "")
   return tonumber(hex:sub(1, 2), 16), tonumber(hex:sub(3, 4), 16), tonumber(hex:sub(5, 6), 16)
@@ -145,9 +167,25 @@ local function emit(s)
   table.insert(out, s)
 end
 
+-- preview.sh sets g:kame_preview_section (the human label, e.g. "rule") and
+-- g:kame_preview_single (1 for an explicit file argument, 0 for the all-types
+-- run). The layer comes from the buffer, so a section never has to repeat the
+-- suffix -> layer mapping.
+local section = vim.g.kame_preview_section
+local single = vim.g.kame_preview_single == 1
+if section and section ~= '' then
+  emit("== " .. section .. " ==")
+  emit("")
+end
+
 local shown = vim.fn.expand("%:p")
 if shown == "" then
   shown = "[No Name]"
+end
+local rel = vim.fn.fnamemodify(shown, ":t")
+local layer = vim.b.kame_lang
+if layer == nil or layer == '' then
+  layer = "?"
 end
 -- Recipe language resolves exactly like syntax/kame.vim: g:kame_recipe_lang
 -- wins, else the legacy g:kame_no_shell_syntax, else kash.
@@ -157,25 +195,38 @@ if recipe_lang == nil or recipe_lang == '' then
 elseif recipe_lang ~= 'kash' and recipe_lang ~= 'shell' and recipe_lang ~= 'none' then
   recipe_lang = 'kash'
 end
-emit("File: " .. shown .. " (recipe: " .. recipe_lang .. ")")
-emit("")
-for lnum = 1, vim.fn.line("$") do
-  emit(render_line(lnum))
+-- Only the rule layer has recipes, so only it reports a recipe language.
+local detail = "layer " .. layer
+if layer == 'rule' then
+  detail = detail .. ", recipe " .. recipe_lang
+elseif layer == 'template' and vim.b.kame_host and vim.b.kame_host ~= '' then
+  detail = detail .. ", host " .. vim.b.kame_host
+end
+if vim.g.kame_preview_body ~= 0 then
+  if not single then
+    emit("File: " .. rel .. " (" .. detail .. ")")
+    emit("")
+  end
+  for lnum = 1, vim.fn.line("$") do
+    emit(render_line(lnum))
+  end
 end
 
-emit("")
-emit("Kame highlight groups (sample in its own style):")
-emit("")
-for _, g in ipairs(groups) do
-  local name, link, sample = g[1], g[2], g[3]
-  emit(string.format("  %-26s %-12s %s", name, "(" .. link .. ")", colored(name, sample)))
-end
+if vim.g.kame_preview_legend ~= 0 then
+  emit("")
+  emit("Kame highlight groups (sample in its own style):")
+  emit("")
+  for _, g in ipairs(groups) do
+    local name, link, sample = g[1], g[2], g[3]
+    emit(string.format("  %-26s %-12s %s", name, "(" .. link .. ")", colored(name, sample)))
+  end
 
-emit("")
-emit("Containers (no highlight, stay uncolored):")
-emit("")
-for _, c in ipairs(containers) do
-  emit(string.format("  %-26s %s", c[1], c[2]))
+  emit("")
+  emit("Containers (no highlight, stay uncolored):")
+  emit("")
+  for _, c in ipairs(containers) do
+    emit(string.format("  %-26s %s", c[1], c[2]))
+  end
 end
 
 io.stdout:write(table.concat(out, "\n") .. "\n")

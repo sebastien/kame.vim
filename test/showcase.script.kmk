@@ -1,0 +1,13 @@
+# Showcase: Kame script composition -- includes, definitions, and expressions.
+include ./rules/common.kmk
+
+VERSION = "1.2.3"
+FLAGS = -Wall -Wextra
+SOURCES = (wildcard ./src/*.c)
+(greet name) = (cat "Hello, " name)
+MESSAGE = "building @(count SOURCES) for {(VERSION)}"
+CONFIG = [name: "app" path: ./src workers: 4 enabled: :true]
+SECTION = ((f _0 _1))
+CAPTURE = $(git rev-parse --short HEAD)
+
+default : ./build/app
