@@ -1,4 +1,4 @@
-# Showcase: every Kame syntactic feature in one file.
+# Showcase: every Kame value-program feature in one file.
 # Second line of # comments.
 include ./rules/common.kmk
 include "./lib/extra.km"
@@ -25,37 +25,18 @@ SPECIAL = (def greeting "hi")
 OTHER = (let x 1)
 MORE = (eval COMPUTED)
 COND = (? FLAG "yes" "no")
+REF = project.name
+REF_SLICE = files.1..4
+REF_KEYS = config.{host,port}
+SECTION = ((f _0 _1 _2))
+GLOB_REF = (replace ./{**}/{*}.c ./build/{_0}/{_1}.o)
+COMPARISONS = [(< 1 2) (>= 3 4) (== a b) (!= a b) (= a b) (> a b) (<= a b)]
+SPECIAL_FORMS = [(if READY "yes" "no") (and A B) (or A B)]
+CAPTURE = $(git rev-parse --short HEAD)
+VERBATIM = """
+raw text with @if(not-a-directive) and $(literal)
+"""
 (source object) = (replace ./{**}/{*}.c ./build/{_0}/{_1}.o object)
 (single) = (echo ./single.c)
-
-default : ./build/app
-
-./build/{name}.o : ./src/{name}.c
-	cc -c @< -o @>
-./build/app : ./build/main.o ./build/util.o
-	cc @>* -o @> # link
-../dist/app : ./build/app /tmp/stage/app
-	cp @<1 @> && echo "staged @{VERSION} ({(VERSION)})"
-task cached : ./build/app
-	echo "cached $(date) by $USER"
-service server : ./build/app
-	./build/app --watch --port 8080
-report : ./build/app
-	@(out "built @(count SOURCES) files\n")
-	title="release @>-1"; echo "$title"
-	echo input:@< output:@> args:@_ all:@* count:@# first:@1 range:@1..2
-	echo in-star:@<* in-hash:@<# in-1:@<2 in-range:@<1..2
-	echo out-star:@>* out-hash:@># out-1:@>2
-	echo esc-\@ esc-\\ esc-\{ esc-\} end
-	if [ -f ./build/app ]; then
-		cat <<-EOF
-		heredoc @< input and @{REF} and @(compute "x")
-		EOF
-	fi
-./archive/{year:[0-9][0-9][0-9][0-9]}/{month:??}/{day:*}.txt : ./data/{year}/{month}/{day}.csv
-	process --glob "**/*.csv" --single "*.c" --any "file?.c"
-
-clean :
-	rm -rf ./build ../dist /tmp/stage
 
 // Second comment style.

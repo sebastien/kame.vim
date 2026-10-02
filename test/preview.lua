@@ -78,14 +78,17 @@ local groups = {
   { "kamePath", "Directory", "./build/app  ../dist  /tmp/stage" },
   { "kameCapture", "Type", "{name}  {**}" },
   { "kameCaptureName", "Identifier", "name  _0" },
-  { "kameGlob", "SpecialChar", "*  **  ?  [0-9]" },
+  { "kameCapturePattern", "SpecialChar", "{name:*}  {**:*}" },
   { "kameSymbol", "Constant", ":my-symbol" },
   { "kameBoolean", "Boolean", ":true  :false  :nil" },
   { "kameNumber", "Number", "1_000  -3.5  0xFF  0b1010  0o755" },
   { "kameName", "Identifier", "wildcard  count" },
+  { "kameReference", "Identifier", "project.name  files.1..4  config.{host,port}" },
+  { "kamePlaceholder", "Special", "_  __  _0  _12" },
   { "kameRecordKey", "Identifier", "name:  path:" },
-  { "kameSpecialForm", "Statement", "def  let  eval  ?" },
+  { "kameSpecialForm", "Statement", "def  let  eval  if  and  or  match  with" },
   { "kameOperator", "Operator", "|" },
+  { "kameComparisonOperator", "Operator", "=  ==  !=  <  >  <=  >=" },
   { "kameDelimiter", "Delimiter", "(  [  ]  )" },
   { "kameString", "String", '"building @(count SOURCES)"' },
   { "kameInterpolation", "Special", "{(VERSION)}" },
@@ -97,6 +100,22 @@ local groups = {
   { "kameSelectorOutput", "PreProc", "@>  @>*  @>#  @>2" },
   { "kameSelectorArgument", "Identifier", "@_  @*  @#  @1" },
   { "kameEscape", "SpecialChar", "\\@  \\\\  \\{  \\}" },
+  { "kameCommandSubstitution", "Special", "$(git rev-parse)" },
+  { "kameCommandSubstitutionDelimiter", "Special", "$(  )" },
+  { "kameRecipeDirective", "PreProc", "@if  @else  @end  @raw" },
+  { "kameKashKeyword", "Conditional", "if  elif  else  match  case" },
+  { "kameKashCommand", "Function", "git  build  cc" },
+  { "kameKashOption", "Identifier", "-c  --watch  -O2" },
+  { "kameKashSetupKey", "Keyword", ":cwd  :timeout  :NODE_ENV" },
+  { "kameKashPipeline", "Operator", "|" },
+  { "kameKashRedirection", "Operator", "<  >  >>" },
+  { "kameKashAcceptance", "Operator", "?" },
+  { "kameKashRecovery", "Operator", "??" },
+  { "kameKashAsync", "Operator", "&" },
+  { "kameKashSeparator", "Delimiter", ";" },
+  { "kameKashMeta", "PreProc", "@NAME  @tmpl(...)" },
+  { "kameKashReference", "Identifier", "$ref  ${ref}  $project.name" },
+  { "kameKashString", "String", '"$title  $(date)"' },
   { "kameDefinitionName", "Define", "VERSION  FLAG!" },
   { "kameDefinitionOperator", "Operator", "=" },
   { "kameFunctionName", "Function", "source" },
@@ -130,8 +149,15 @@ local shown = vim.fn.expand("%:p")
 if shown == "" then
   shown = "[No Name]"
 end
-local shell = vim.g.kame_no_shell_syntax == 1 and " (g:kame_no_shell_syntax=1)" or " (with shell syntax)"
-emit("File: " .. shown .. shell)
+-- Recipe language resolves exactly like syntax/kame.vim: g:kame_recipe_lang
+-- wins, else the legacy g:kame_no_shell_syntax, else kash.
+local recipe_lang = vim.g.kame_recipe_lang
+if recipe_lang == nil or recipe_lang == '' then
+  recipe_lang = vim.g.kame_no_shell_syntax == 1 and 'none' or 'kash'
+elseif recipe_lang ~= 'kash' and recipe_lang ~= 'shell' and recipe_lang ~= 'none' then
+  recipe_lang = 'kash'
+end
+emit("File: " .. shown .. " (recipe: " .. recipe_lang .. ")")
 emit("")
 for lnum = 1, vim.fn.line("$") do
   emit(render_line(lnum))

@@ -1,0 +1,40 @@
+# Syntax fixture: rule headers, targets, selectors, and recipes.
+
+default : ./build/app
+
+./build/{name}.o : ./src/{name}.c
+	cc -c @< -o @>
+./build/app : ./build/main.o ./build/util.o
+	cc @>* -o @> # link
+./build/version.txt :
+	@(yield "version 3\n")
+task cached : ./build/app
+	echo "cached $(date)"
+service server : ./build/app
+	./build/app --watch
+report : ./build/app
+	@(out "built @(count SOURCES) files\n")
+	title="release @>-1"; echo "$title"
+	if [ -f ./build/app ]; then
+		cat <<-EOF
+		first @< input
+		EOF
+	fi
+
+clean :
+	rm -rf ./build
+
+// Second comment style.
+
+directives : ./build/app
+	@if :true
+	echo yes
+	@else
+	echo no
+	@end
+	@raw
+	literal @if(kept)
+	@end
+
+./out/{name:*}.o : ./src/{name}.c
+	cc -c @< -o @>

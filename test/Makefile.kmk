@@ -1,0 +1,6 @@
+# The canonical rule source name. It also matches Vim's built-in Makefile
+# detection, so it must still be detected as Kame with the rule layer.
+default : ./build/app
+
+./build/app : ./build/main.o
+	cc -o @> @<
