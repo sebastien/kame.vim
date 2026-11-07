@@ -7,6 +7,9 @@ km_fixture="$root/test/fixture.km"
 kmk_fixture="$root/test/fixture.kmk"
 kash_fixture="$root/test/fixture.kash"
 ktmpl_fixture="$root/test/fixture.paml.ktmpl"
+shell_kash_fixture="$root/test/fixture.shell-kash.kmk"
+shell_kame_fixture="$root/test/fixture.shell-kame.kmk"
+shell_external_fixture="$root/test/fixture.shell-external.kmk"
 
 # Optional extra runtimepath for host syntaxes used by .ktmpl tests. Set
 # KAME_HOST_RUNTIME to the directory holding the PAML (or other host) syntax/
@@ -21,9 +24,24 @@ run_kmk() {
     --cmd 'syntax on' \
     "$@" \
     -c 'set filetype=kame' \
+    -c 'syntax sync fromstart' \
     -c "luafile $root/test/assertions_kmk.lua" \
     -c 'qa!' \
     "$kmk_fixture"
+}
+
+check_group() {
+  local label="$1" file="$2" line="$3" col="$4" expected="$5"
+  nvim --headless -u NONE -i NONE -n \
+    --cmd "set runtimepath^=$root" \
+    --cmd 'filetype on' \
+    --cmd 'syntax on' \
+    --cmd 'set loadplugins' \
+    --cmd 'runtime! plugin/**/*.vim' \
+    -c "edit $file" \
+    -c 'syntax sync fromstart' \
+    -c "lua local group = vim.fn.synIDattr(vim.fn.synID($line, $col, 1), 'name'); if group ~= '$expected' then io.stderr:write('$label: expected $expected, got ' .. (group ~= '' and group or '<none>') .. '\\n') vim.cmd('cquit 1') end" \
+    -c 'qa!'
 }
 
 echo 'value program (fixture.km):'
@@ -31,12 +49,17 @@ nvim --headless -u NONE -i NONE -n \
   --cmd "set runtimepath^=$root" \
   --cmd 'syntax on' \
   -c 'set filetype=kame' \
+  -c 'syntax sync fromstart' \
   -c "luafile $root/test/assertions_km.lua" \
   -c 'qa!' \
   "$km_fixture"
 
-echo 'rule program, default highlighting (Kash recipes):'
+echo 'rule program, default highlighting (hybrid Kash + template):'
 run_kmk
+echo "g:kame_recipe_lang = 'hybrid':"
+run_kmk --cmd "let g:kame_recipe_lang = 'hybrid'"
+echo "g:kame_recipe_lang = 'kash':"
+run_kmk --cmd "let g:kame_recipe_lang = 'kash'"
 echo "g:kame_recipe_lang = 'shell':"
 run_kmk --cmd "let g:kame_recipe_lang = 'shell'"
 echo "g:kame_recipe_lang = 'none':"
@@ -44,10 +67,16 @@ run_kmk --cmd "let g:kame_recipe_lang = 'none'"
 echo 'g:kame_no_shell_syntax = 1:'
 run_kmk --cmd 'let g:kame_no_shell_syntax = 1'
 
+echo 'buffer-level SHELL override:'
+check_group 'SHELL = kash recipe' "$shell_kash_fixture" 4 2 'kameKashReference'
+check_group 'SHELL = kame recipe' "$shell_kame_fixture" 4 3 'kameStdlibFunction'
+check_group 'SHELL = external shell' "$shell_external_fixture" 4 2 'shStatement'
+
 echo 'Kash source highlighting:'
 nvim --headless -u NONE -i NONE -n \
   --cmd "set runtimepath^=$root" \
   --cmd 'syntax on' \
+  -c 'syntax sync fromstart' \
   -c "luafile $root/test/assertions_kash.lua" \
   -c 'qa!' \
   "$kash_fixture"
@@ -63,6 +92,7 @@ nvim --headless -u NONE -i NONE -n \
   --cmd 'syntax on' \
   --cmd 'set loadplugins' \
   --cmd 'runtime! plugin/**/*.vim' \
+  -c 'syntax sync fromstart' \
   -c "luafile $root/test/assertions_ktmpl.lua" \
   -c 'qa!' \
   "$ktmpl_fixture"

@@ -1,0 +1,4 @@
+SHELL = "bash"
+
+default : ./app
+	echo hi

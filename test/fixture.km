@@ -1,17 +1,28 @@
 # Syntax fixture: comments, includes, definitions, expressions, references.
-include ./rules/common.kmk
+(include ./rules/common.kmk)
+(include? "lib/extra.km")
 VERSION = "1.2.3"
+MODE ?= "debug"
+CHECKS += [./tests/unit]
 SOURCES = (wildcard ./src/*.c)
-MESSAGE = "building @(count SOURCES) sources"
+MESSAGE = "building @(count SOURCES) for @{TARGET}"
 COUNT = 1_000
 RATIO = -3.5
 CONFIG = [name: "app" path: ./src workers: 4 enabled: :true]
 REF = project.name
 SLICE = files.1..4
 KEYS = config.{host,port}
+ROOTED = @{PATH_SRC}/sh/**/*.sh
+TOOL = x/uv
 SECTION = ((f _0 _1))
 CMP = (< a b)
 CAPTURE = $(git rev-parse --short HEAD)
 (source object) = (replace ./{**}/{*}.c ./build/{_0}/{_1}.o object)
+(single) = (echo ./single.c)
 
 // Second comment style.
+PATTERN = ./src/{name:*}.c
+RESOURCE = (resource "file:///tmp/x")
+TIME = (now)
+TICKS = (monotonic)
+PARSED = (parse-args [] args)

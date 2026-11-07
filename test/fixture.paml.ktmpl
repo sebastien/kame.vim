@@ -2,7 +2,7 @@
 <html
 	<head
 		<meta(charset=utf-8)
-		<title:Kame ―  @(page.title)
+		<title:Kame ―  @(page.title) — @{site.name}
 	<body
 		<h1 @(page.heading)
 		<!-- @if(page.posts) -->

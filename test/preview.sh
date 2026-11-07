@@ -40,12 +40,12 @@ for arg in "$@"; do
     --type=*) type="${arg#--type=}" ;;
     -h|--help)
       cat >&2 <<EOF
-Usage: test/preview.sh [FILE] [--type=TYPE] [--no-shell] [--recipe-lang=kash|shell|none] [--clean]
+Usage: test/preview.sh [FILE] [--type=TYPE] [--no-shell] [--recipe-lang=hybrid|kash|shell|kame|none] [--clean]
   no argument: show every type in turn ($(IFS=', '; echo "${order[*]}"))
   FILE:        preview one file
   --type:      restrict to one type: $(IFS=', '; echo "${order[*]}"), or all
   --no-shell:  set g:kame_no_shell_syntax=1 (recipe-lang=none)
-  --recipe-lang: highlight recipe bodies as kash, shell, or none
+  --recipe-lang: highlight recipe bodies as hybrid, kash, shell, kame, or none
   --clean:     -u NONE isolated defaults (CI)
 EOF
       exit 0

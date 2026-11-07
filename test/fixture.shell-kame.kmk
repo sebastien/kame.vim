@@ -1,0 +1,4 @@
+SHELL = kame
+
+./greeting.txt : ./name.txt
+	(str "Hello, " name)

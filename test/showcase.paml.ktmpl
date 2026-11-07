@@ -5,7 +5,7 @@
 		<title:Showcase ― @(page.title)
 	<body
 		<h1 @(page.heading)
-		<p: rendered by @(host.name) at {(VERSION)}
+		<p: rendered by @(host.name) at @{VERSION}
 		<!-- @with(page.meta) -->
 		<meta(name=description content=@(description))
 		<!-- @end -->
@@ -18,8 +18,8 @@
 		<!-- @else -->
 		<p: no posts
 		<!-- @end -->
-		<!-- @let([count] (count page.posts)) -->
-		<footer:@(count) posts, first @<(page.posts) last @>-1
+		<!-- @let(count (count page.posts)) -->
+		<footer:@(count) posts, first @< last @>-1
 		<!-- @include(./partials/footer.paml) -->
 		<!-- @raw -->
 		<pre>literal @if(kept) and @(kept)</pre>

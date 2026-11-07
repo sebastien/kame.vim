@@ -69,6 +69,7 @@ end
 expect(5, '@(page.title)', 'kameTemplateDelimiter')
 expect(5, 'page.title', 'kameReference')
 expect(5, ')', 'kameTemplateDelimiter', 1)
+expect(5, '@{site.name}', 'kameTemplateReference')
 expect(7, '@(', 'kameTemplateDelimiter')
 expect(7, 'page.heading', 'kameReference')
 expect(12, 'post.url', 'kameReference')

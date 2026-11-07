@@ -48,48 +48,70 @@ local function reject(line, needle, group)
   end
 end
 
--- Comments and the include directive.
+-- Comments and includes. Includes are now parenthesized source-composition
+-- forms, not line directives.
 expect(1, '# Syntax', 'kameComment')
-expect(17, '// Second', 'kameComment')
+expect(23, '// Second', 'kameComment')
 expect(2, 'include', 'kameDirective')
 expect(2, './rules/common.kmk', 'kameIncludePath')
+expect(3, 'include?', 'kameDirective')
+expect(3, '"lib/extra.km"', 'kameIncludePath')
 
--- Definitions and value atoms.
-expect(3, 'VERSION', 'kameDefinitionName')
-expect(3, '=', 'kameDefinitionOperator')
-expect(3, '"1.2.3"', 'kameString')
-expect(4, '(', 'kameDelimiter')
-expect(4, 'wildcard', 'kameStdlibFunction')
-expect(4, './src/*.c', 'kamePath')
-expect(5, '"building', 'kameString')
-expect(5, '@(count', 'kameTemplateDelimiter')
-expect(5, 'count', 'kameStdlibFunction')
-expect(6, '1_000', 'kameNumber')
-expect(7, '-3.5', 'kameNumber')
-expect(8, '[', 'kameDelimiter')
-expect(8, 'name:', 'kameRecordKey')
-expect(8, '"app"', 'kameString')
-expect(8, 'path:', 'kameRecordKey')
-expect(8, './src', 'kamePath')
-expect(8, ':true', 'kameBoolean')
+-- Definitions, including the ?= default and += aggregate operators.
+expect(4, 'VERSION', 'kameDefinitionName')
+expect(4, '=', 'kameDefinitionOperator')
+expect(4, '"1.2.3"', 'kameString')
+expect(5, 'MODE', 'kameDefinitionName')
+expect(5, '?=', 'kameDefinitionOperator')
+expect(6, 'CHECKS', 'kameDefinitionName')
+expect(6, '+=', 'kameDefinitionOperator')
 
--- References, slices, key selections, sections, comparisons, and substitution.
-expect(9, 'project.name', 'kameReference')
-expect(10, 'files.1..4', 'kameReference')
-expect(11, 'config.{host,port}', 'kameReference')
-expect(12, '_0', 'kamePlaceholder')
-expect(12, '_1', 'kamePlaceholder')
-expect(13, '<', 'kameComparisonOperator')
-expect(14, '$(git', 'kameCommandSubstitutionDelimiter')
+-- Expressions and value atoms.
+expect(7, '(', 'kameDelimiter')
+expect(7, 'wildcard', 'kameStdlibFunction')
+expect(7, './src/*.c', 'kamePath')
+expect(8, '"building', 'kameString')
+expect(8, '@(count', 'kameTemplateDelimiter')
+expect(8, 'count', 'kameStdlibFunction')
+expect(8, '@{TARGET}', 'kameTemplateReference')
+expect(9, '1_000', 'kameNumber')
+expect(10, '-3.5', 'kameNumber')
+expect(11, '[', 'kameDelimiter')
+expect(11, 'name:', 'kameRecordKey')
+expect(11, '"app"', 'kameString')
+expect(11, 'path:', 'kameRecordKey')
+expect(11, './src', 'kamePath')
+expect(11, ':true', 'kameBoolean')
+
+-- References, slices, key selections, tool references, sections, comparisons,
+-- and command substitution.
+expect(12, 'project.name', 'kameReference')
+expect(13, 'files.1..4', 'kameReference')
+expect(14, 'config.{host,port}', 'kameReference')
+expect(15, '@{PATH_SRC}', 'kameTemplateReference')
+expect(15, '/sh/**/*.sh', 'kamePath')
+expect(16, 'x/uv', 'kameReference')
+expect(17, '_0', 'kamePlaceholder')
+expect(17, '_1', 'kamePlaceholder')
+expect(18, '<', 'kameComparisonOperator')
+expect(19, '$(git', 'kameCommandSubstitutionDelimiter')
 
 -- Function definitions, pattern captures, and globs.
-expect(15, '(source', 'kameFunctionDefinition')
-expect(15, 'source', 'kameFunctionName')
-expect(15, 'object', 'kameFunctionParameter')
-expect(15, './{**}/{*}.c', 'kamePath')
-expect(15, '{**}', 'kameCapture')
-expect(15, '_0', 'kameCaptureName')
-expect(15, 'object', 'kameFunctionCall', 2)
+expect(20, '(source', 'kameFunctionDefinition')
+expect(20, 'source', 'kameFunctionName')
+expect(20, 'object', 'kameFunctionParameter')
+expect(20, './{**}/{*}.c', 'kamePath')
+expect(20, '{**}', 'kameCapture')
+expect(20, '_0', 'kameCaptureName')
+expect(20, 'object', 'kameFunctionCall', 2)
+expect(24, './src/{name:*}.c', 'kamePath')
+expect(24, '{name:*}', 'kameCapture')
+
+-- Current standard-library operations that used to fall back to generic calls.
+expect(25, 'resource', 'kameStdlibFunction')
+expect(26, 'now', 'kameStdlibFunction')
+expect(27, 'monotonic', 'kameStdlibFunction')
+expect(28, 'parse-args', 'kameStdlibFunction')
 
 if #failures > 0 then
   io.stderr:write(table.concat(failures, '\n') .. '\n')

@@ -1,10 +1,13 @@
 # Showcase: every Kame value-program feature in one file.
 # Second line of # comments.
-include ./rules/common.kmk
-include "./lib/extra.km"
-include ../shared/base.kmk
+(include ./rules/common.kmk)
+(include "./lib/extra.km")
+(include? ../shared/base.kmk)
 
 VERSION = "1.2.3"
+MODE ?= "debug"
+CHECKS += [./tests/unit]
+ROOTED = @{PATH_SRC}/sh/**/*.sh
 FLAG! = :debug
 READY? = :true
 COUNT = 1_000
@@ -16,9 +19,9 @@ FLOAT = 1.5e-3
 SYM = :my-symbol
 BOOLS = [:true :false :nil]
 NAMES = (wildcard ./src/*.c)
-MESSAGE = "building @(count SOURCES) for @(TARGET) with {(VERSION)}"
-SPACED = "{( COMPUTED )}"
-ESCAPED = "show \@not-a-template \{literal\} \\ done"
+MESSAGE = "building @(count SOURCES) for @(TARGET) with @{VERSION}"
+SPACED = "{( COMPUTED )} is literal text"
+ESCAPED = "show \@not-a-template"
 CONFIG = [name: "app" path: ./src workers: 4 enabled: :true mode: :release]
 PIPE = (filter SOURCES | (match ./{**}/{*}.c))
 SPECIAL = (def greeting "hi")
@@ -29,14 +32,14 @@ REF = project.name
 REF_SLICE = files.1..4
 REF_KEYS = config.{host,port}
 SECTION = ((f _0 _1 _2))
-GLOB_REF = (replace ./{**}/{*}.c ./build/{_0}/{_1}.o)
+GLOB_REF = (sub ./{**}/{*}.c ./build/{_0}/{_1}.o)
 COMPARISONS = [(< 1 2) (>= 3 4) (== a b) (!= a b) (= a b) (> a b) (<= a b)]
 SPECIAL_FORMS = [(if READY "yes" "no") (and A B) (or A B)]
 CAPTURE = $(git rev-parse --short HEAD)
 VERBATIM = """
 raw text with @if(not-a-directive) and $(literal)
 """
-(source object) = (replace ./{**}/{*}.c ./build/{_0}/{_1}.o object)
-(single) = (echo ./single.c)
+(source object) = (sub ./{**}/{*}.c ./build/{_0}/{_1}.o object)
+(single) = (nop ./single.c)
 
 // Second comment style.

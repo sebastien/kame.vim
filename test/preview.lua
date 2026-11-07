@@ -92,54 +92,65 @@ end
 -- Samples are forced to the group's own colors, not re-parsed.
 local groups = {
   { "kameComment", "Comment", "# comment  // comment" },
-  { "kameDirective", "Include", "include" },
+  { "kameDirective", "Include", "include  include?" },
   { "kameIncludePath", "Directory", "./rules/common.kmk" },
   { "kameRuleKind", "Keyword", "task  service" },
-  { "kameRuleSeparator", "Operator", ":" },
+  { "kameRuleModifier", "Keyword", "always" },
+  { "kameRuleSeparator", "Operator", ":  <-" },
+  { "kameRuleOrderOnly", "Operator", "|" },
+  { "kameRuleGroupSeparator", "Delimiter", "," },
   { "kameTargetName", "Function", "default  cached" },
   { "kamePath", "Directory", "./build/app  ../dist  /tmp/stage" },
   { "kameCapture", "Type", "{name}  {**}" },
   { "kameCaptureName", "Identifier", "name  _0" },
-  { "kameCapturePattern", "SpecialChar", "{name:*}  {**:*}" },
+  { "kameCapturePattern", "SpecialChar", "{name:*}  {path:**}  {*}" },
+  { "kameCaptureDefault", "String", "{region=us-east}" },
   { "kameSymbol", "Constant", ":my-symbol" },
   { "kameBoolean", "Boolean", ":true  :false  :nil" },
   { "kameNumber", "Number", "1_000  -3.5  0xFF  0b1010  0o755" },
-  { "kameName", "Identifier", "wildcard  count" },
-  { "kameReference", "Identifier", "project.name  files.1..4  config.{host,port}" },
+  { "kameName", "Identifier", "name  item" },
+  { "kameVariable", "Constant", "VERSION  SOURCES" },
+  { "kameFunctionCall", "Function", "custom-op  my-helper" },
+  { "kameStdlibFunction", "Special", "wildcard  count  map  yield!" },
+  { "kameReference", "Identifier", "project.name  files.1..4  config.{host,port}  x/uv" },
   { "kamePlaceholder", "Special", "_  __  _0  _12" },
   { "kameRecordKey", "Identifier", "name:  path:" },
-  { "kameSpecialForm", "Statement", "def  let  eval  if  and  or  match  with" },
+  { "kameSpecialForm", "Statement", "def  let  eval  if  and  or  match  with  ?  run!  pipe!  await  finally!" },
   { "kameOperator", "Operator", "|" },
   { "kameComparisonOperator", "Operator", "=  ==  !=  <  >  <=  >=" },
   { "kameDelimiter", "Delimiter", "(  [  ]  )" },
-  { "kameString", "String", '"building @(count SOURCES)"' },
-  { "kameInterpolation", "Special", "{(VERSION)}" },
-  { "kameInterpolationDelimiter", "Special", "{(  )}" },
+  { "kameString", "String", '"building @(count SOURCES) for @{TARGET}"' },
   { "kameTemplateExpression", "Special", "@(count SOURCES)" },
   { "kameTemplateDelimiter", "Special", "@(  )" },
-  { "kameSelectorInput", "Special", "@<  @<*  @<#  @<2" },
+  { "kameTemplateReference", "PreProc", "@{TARGET}  @{x/uv}" },
+  { "kameSelectorInput", "Special", "@<  @<*  @<#  @<2  @<?" },
   { "kameSelectorOutput", "PreProc", "@>  @>*  @>#  @>2" },
   { "kameSelectorArgument", "Identifier", "@_  @*  @#  @1" },
   { "kameEscape", "SpecialChar", "\\@  \\\\  \\{  \\}" },
   { "kameCommandSubstitution", "Special", "$(git rev-parse)" },
   { "kameCommandSubstitutionDelimiter", "Special", "$(  )" },
-  { "kameRecipeDirective", "PreProc", "@if  @else  @end  @raw" },
-  { "kameTemplateDirective", "PreProc", "@if  @for  @end" },
-  { "kameKashKeyword", "Conditional", "if  elif  else  match  case" },
+  { "kameRecipeDirective", "PreProc", "@if  @elif  @else  @match  @case  @end  @raw" },
+  { "kameTemplateDirective", "PreProc", "@if  @for  @with  @let  @include  @match  @case  @end  @raw" },
+  { "kameKashKeyword", "Conditional", "if  elif  else  match  case  defn  let  defer  return  exit  for  while  break  continue  with  stream" },
   { "kameKashCommand", "Function", "git  build  cc" },
+  { "kameKashGroupCommand", "Function", "producer  consumer" },
   { "kameKashOption", "Identifier", "-c  --watch  -O2" },
-  { "kameKashSetupKey", "Keyword", ":cwd  :timeout  :NODE_ENV" },
+  { "kameKashSetupKey", "Keyword", ":cwd  :timeout  :accept-exit  :NODE_ENV" },
   { "kameKashPipeline", "Operator", "|" },
-  { "kameKashRedirection", "Operator", "<  >  >>" },
+  { "kameKashSequential", "Operator", "&&  ||" },
+  { "kameKashRedirection", "Operator", "<  >  >>  2>  2>>  2>&1  >@" },
+  { "kameKashChannel", "Special", ">&out  >&err  >&reports  <&reports  &reports  <&" },
+  { "kameKashChannelName", "Special", "reports" },
+  { "kameKashMux", "Operator", "merge  frame  broadcast  balance  filter  encode  tee  each" },
+  { "kameKashMuxKey", "Keyword", ":lines  :buffer  :append" },
   { "kameKashAcceptance", "Operator", "?" },
   { "kameKashRecovery", "Operator", "??" },
   { "kameKashAsync", "Operator", "&" },
   { "kameKashSeparator", "Delimiter", ";" },
-  { "kameKashMeta", "PreProc", "@NAME  @tmpl(...)" },
-  { "kameKashReference", "Identifier", "$ref  ${ref}  $project.name" },
+  { "kameKashReference", "Identifier", "$ref  ${ref}  $project.name  $x/uv  $...CMD" },
   { "kameKashString", "String", '"$title  $(date)"' },
   { "kameDefinitionName", "Define", "VERSION  FLAG!" },
-  { "kameDefinitionOperator", "Operator", "=" },
+  { "kameDefinitionOperator", "Operator", "=  ?=  +=" },
   { "kameFunctionName", "Function", "source" },
   { "kameFunctionParameter", "Identifier", "object" },
 }
@@ -151,6 +162,13 @@ local containers = {
   { "kameList", "[ ... ] container" },
   { "kameDefinition", "NAME = ... container" },
   { "kameFunctionDefinition", "(args) = ... container" },
+  { "kameKashGroup", "Kash ( ... ) group" },
+  { "kameKashProcessGroup", "comma-separated process group" },
+  { "kameKashMuxRegion", "|(...) graph operator region" },
+  { "kameKashSetup", ":KEY VALUE ... prefix" },
+  { "kameRecipeRaw", "@raw ... @end region" },
+  { "kameKashWithHeader", "with ... header" },
+  { "kameKashStreamHeader", "stream ... header" },
 }
 
 local function colored(group, text)
@@ -188,12 +206,28 @@ if layer == nil or layer == '' then
   layer = "?"
 end
 -- Recipe language resolves exactly like syntax/kame.vim: g:kame_recipe_lang
--- wins, else the legacy g:kame_no_shell_syntax, else kash.
+-- wins, else the legacy g:kame_no_shell_syntax, else shell.
 local recipe_lang = vim.g.kame_recipe_lang
-if recipe_lang == nil or recipe_lang == '' then
-  recipe_lang = vim.g.kame_no_shell_syntax == 1 and 'none' or 'kash'
-elseif recipe_lang ~= 'kash' and recipe_lang ~= 'shell' and recipe_lang ~= 'none' then
-  recipe_lang = 'kash'
+local explicit = (recipe_lang ~= nil and recipe_lang ~= '') or vim.g.kame_no_shell_syntax == 1
+if not explicit then
+  recipe_lang = 'hybrid'
+  for _, line in ipairs(vim.fn.getline(1, '$')) do
+    if line:match('^%s*SHELL%s*=%s*kash%s*$') then
+      recipe_lang = 'kash'
+      break
+    elseif line:match('^%s*SHELL%s*=%s*kame%s*$') then
+      recipe_lang = 'kame'
+      break
+    elseif line:match('^%s*SHELL%s*=%s*%S') then
+      recipe_lang = 'shell'
+      break
+    end
+  end
+elseif recipe_lang == nil or recipe_lang == '' then
+  recipe_lang = 'none'
+elseif recipe_lang ~= 'kash' and recipe_lang ~= 'shell' and recipe_lang ~= 'kame'
+    and recipe_lang ~= 'hybrid' and recipe_lang ~= 'none' then
+  recipe_lang = 'hybrid'
 end
 -- Only the rule layer has recipes, so only it reports a recipe language.
 local detail = "layer " .. layer
