@@ -5,9 +5,9 @@ endif
 let g:loaded_kame_vim = 1
 
 " Register the Kame suffixes with Neovim's Lua filetype matcher. Its built-in
-" table matches Kame discovery names as Makefiles (Makefile.kmk) and .ksh as
-" shell, and vim.filetype.match runs before ftdetect/*.vim, so an ftdetect rule
-" alone is not enough: without this, opening a .kmk build file sets
+" table matches Kame discovery names as Makefiles (Makefile.km, make.km) and
+" .ksh as shell, and vim.filetype.match runs before ftdetect/*.vim, so an
+" ftdetect rule alone is not enough: without this, opening a .km build file sets
 " filetype=kame and then re-detects it as make. The callback records the source
 " layer in b:kame_lang for the syntax file, using kame#lang_of so the mapping
 " lives in one place. Vim falls back to ftdetect.
@@ -16,44 +16,26 @@ if has('nvim')
 local function kame(path)
   return 'kame', function(buf)
     vim.b[buf].kame_lang = vim.fn['kame#lang_of'](path)
-    -- A .ktmpl names its host dialect; record it and the syntax to embed so
-    -- syntax/kame.vim can layer the template over that host.
-    if vim.fn['kame#is_ktmpl'](path) == 1 then
-      vim.b[buf].kame_host = vim.fn['kame#host_of'](path)
-      vim.b[buf].kame_host_syntax = vim.fn['kame#host_syntax'](path)
-    end
   end
 end
 require('vim.filetype').add({
   pattern = {
     -- Higher priority than Neovim's built-in `^[mM]akefile` (priority 0) so a
-    -- Makefile.kmk is Kame, not make.
+    -- Makefile.km is Kame, not make.
     ['.*%.km'] = { kame, { priority = 100 } },
-    ['.*%.kmd'] = { kame, { priority = 100 } },
-    ['.*%.kmk'] = { kame, { priority = 100 } },
+    ['.*%.kame'] = { kame, { priority = 100 } },
     ['.*%.kash'] = { kame, { priority = 100 } },
     ['.*%.ksh'] = { kame, { priority = 100 } },
-    ['.*%.ktmpl'] = { kame, { priority = 100 } },
+    ['.*%.kmt'] = { kame, { priority = 100 } },
   },
-  -- Rule program by file name as well as by suffix.
   filename = {
     Kamefile = kame,
+    ['Makefile.km'] = kame,
+    ['make.km'] = kame,
   },
 })
 EOF
 endif
-
-" A host plugin may claim a .HOST.ktmpl before Kame: PAML detects `*.paml*`,
-" which matches page.paml.ktmpl. Host detection runs on BufReadPost, and this
-" plugin loads after filetype detection in a normal session, so its BufReadPost
-" runs after the host's and wins. syntax/kame.vim embeds the host itself, so
-" only the outer filetype changes. b:current_syntax may hold the host, so clear
-" it for syntax/kame.vim. Host fields are filled in here too, since host order
-" can leave them unset.
-augroup kame_ktmpl
-  autocmd!
-  autocmd BufReadPost *.ktmpl if kame#is_ktmpl(expand('%:p')) && &filetype !=# 'kame' | unlet! b:current_syntax | let b:kame_lang = 'template' | let b:kame_host = kame#host_of(expand('%:p')) | let b:kame_host_syntax = kame#host_syntax(expand('%:p')) | set filetype=kame | endif
-augroup END
 
 function! s:RunKame(arguments) abort
   let l:command = shellescape(get(g:, 'kame_command', 'kame')) . ' ' . a:arguments
@@ -69,11 +51,16 @@ function! s:WriteSource() abort
   return expand('%:p')
 endfunction
 
-" The source layer selects the parser language. expr/rule programs share the
-" script parser; kash programs use the Kash parser. kame#lang_of is the single
+" The source layer selects the parser language. kame#lang_of is the single
 " mapping from suffix or file name to layer.
 function! s:ParseLang(file) abort
-  return kame#lang_of(a:file) ==# 'kash' ? 'kash' : 'script'
+  let l:lang = kame#lang_of(a:file)
+  if l:lang ==# 'kash'
+    return 'kash'
+  elseif l:lang ==# 'template'
+    return 'template'
+  endif
+  return 'km'
 endfunction
 
 function! s:Format() abort

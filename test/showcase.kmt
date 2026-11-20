@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<body>
+<h1>@{title}</h1>
+<ul>
+<!-- @for post in posts -->
+	<li><a href="@{post.path}">@{post.title}</a></li>
+<!-- @end for -->
+</ul>
+<!-- @if users -->
+<p>@{count users} readers</p>
+<!-- @elif drafts -->
+<p>drafts only</p>
+<!-- @else -->
+<p>@{title}</p>
+<!-- @end if -->
+<!-- @with settings -->
+<p>@{name}: @{value}</p>
+<!-- @end with -->
+<!-- @match page.kind -->
+<!-- @case ./pages/{slug:*}.md -->
+<h2>@{slug}</h2>
+<!-- @else -->
+<h2>unknown</h2>
+<!-- @end match -->
+@raw
+@{literal} @@ stays raw
+@end raw
+</body>
+</html>

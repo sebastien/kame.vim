@@ -1,62 +1,26 @@
-# Kash process fixture: definitions, commands, pipelines, and substitutions.
-title = "Little publication"
-names = ["hello world.txt" "second.txt"]
-(label name) = (uppercase name)
-
-git status --short
-build | tee ./build.log
-watch-assets &
-:accept-exit [1 7] :timeout (nop 10) :NODE_ENV production npm test
-let workspace = (line $(mktemp -d))
+# Kash fixture: actions, bindings, pipelines, and control flow.
+def label name = uppercase name
+let title = "Hello $name"
+let files = [./one.txt, ./two.txt]
+echo "Hello, $name"
+cat $...files | wc -l
+cwd: ./build timeout: 5 env: $exports npm test
+let result = $?(grep -q needle ./sample.txt)
+grep -q needle ./sample.txt || echo "no needle"
+let job = $&(watch-assets --port 8080)
+for source in files
+	echo $source
+while $?(test -f ./ready).ok
+	sleep 1
 defer rm -rf $workspace
-result = $(git rev-parse --short HEAD) ?? "unknown"
-echo revision=$result
-$x/uv run --extra mcp
-${x/uv} run
-CMD = ["tool" "arg"]
-$...CMD status
-probe ? echo "fallback"
-printf "[%s]\n" (map names label)
-if (options.release)
-	cc -O2 -o build/app src/app.c
-elif test -f ./build/app
-	echo present
-else
-	report "nothing to build"
-
-match (target)
-	case ./src/{name:*}.c
-		cc -c ${name}.c
-	else
-		report unknown
-
-def probe workspace rest...
-	if test -f "${workspace}/ready"
-		return 0
-	return 75 ?
-
-for name in names
-	echo $name
-while probe --pending
-	worker --one
-with :cwd ./project :env $exports
+with cwd: ./project env: $exports
 	configure
-
+match ./notes/intro.txt
+	./notes/{name:*}.txt =>
+		echo $name
+	else =>
+		echo unknown
 producer |(merge) sort
-producer && verify || publish
-producer > ./out.txt 2> ./err.txt
-echo routed >&out
-stream reports
-( producer >&reports, &reports | consumer )
-selected = (probe @> @< @<? @* @_ @# @1)
-X = @{ROOT}/path
-stray = "@{x/uv}"
 producer |(frame :lines) |(broadcast :buffer 4096) (cat > ./a, cat > ./b)
-producer |(tee :append ./audit) |(each) worker
-producer | :cwd ./build :timeout 10 tool arg
-# final comment
-def opencode-cleanup! temporary created # cleanup
-	if test -e $temporary
-		for entry from created :lines
-			let fields = (split "\t" entry)
-defn probe
+printf "%s\n" $...names >&out
+stream reports

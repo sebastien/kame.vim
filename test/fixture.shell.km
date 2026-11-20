@@ -1,0 +1,9 @@
+SHELL = "sh"
+
+task build ; {summary: "Build it"}
+	echo hello
+	@if release
+	echo release
+	@else
+	echo plain
+	@end

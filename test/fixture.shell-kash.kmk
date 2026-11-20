@@ -1,4 +1,0 @@
-SHELL = kash
-
-default : ./app
-	$x/uv run --extra mcp

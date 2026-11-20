@@ -2,9 +2,9 @@
 # Render Kame syntax highlighting to the terminal with Neovim colors, then
 # list every kame* group in its own style.
 #
-# With no argument, every source type is shown in turn: expr, script, rule,
-# template, and kash. Pass a file to preview just that file. --type selects a
-# single registered type.
+# With no argument, every source type is shown in turn: expr, rule, template,
+# and kash. Pass a file to preview just that file. --type selects a single
+# registered type.
 #
 # By default your nvim config is used (colorscheme, etc.); the local
 # kame.vim checkout is prepended to 'runtimepath' so you preview these
@@ -14,18 +14,15 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 preview="$root/test/preview.lua"
 
-# type -> fixture. Order here is the default run order. Names match the layer
-# recorded in b:kame_lang, except that script (a .kmk script program focused on
-# definitions) and rule (a .kmk rule program focused on headers and recipes)
-# share the rule layer by design.
+# type -> fixture. Order here is the default run order. Rule sources are Kame
+# programs too; the rule showcase simply emphasizes declarations and recipes.
 declare -A fixtures=(
   [expr]="$root/test/showcase.km"
-  [script]="$root/test/showcase.script.kmk"
-  [rule]="$root/test/showcase.kmk"
-  [template]="$root/test/showcase.paml.ktmpl"
+  [rule]="$root/test/showcase.rules.km"
+  [template]="$root/test/showcase.kmt"
   [kash]="$root/test/showcase.kash"
 )
-order=(expr script rule template kash)
+order=(expr rule template kash)
 
 type=all
 file=""
@@ -40,12 +37,12 @@ for arg in "$@"; do
     --type=*) type="${arg#--type=}" ;;
     -h|--help)
       cat >&2 <<EOF
-Usage: test/preview.sh [FILE] [--type=TYPE] [--no-shell] [--recipe-lang=hybrid|kash|shell|kame|none] [--clean]
+Usage: test/preview.sh [FILE] [--type=TYPE] [--no-shell] [--recipe-lang=kash|shell|none] [--clean]
   no argument: show every type in turn ($(IFS=', '; echo "${order[*]}"))
   FILE:        preview one file
   --type:      restrict to one type: $(IFS=', '; echo "${order[*]}"), or all
   --no-shell:  set g:kame_no_shell_syntax=1 (recipe-lang=none)
-  --recipe-lang: highlight recipe bodies as hybrid, kash, shell, kame, or none
+  --recipe-lang: highlight recipe bodies as kash, shell, or none
   --clean:     -u NONE isolated defaults (CI)
 EOF
       exit 0
@@ -100,8 +97,7 @@ if [[ -n $recipe_lang ]]; then
 fi
 
 # Render each section without the legend, then print the legend once at the end
-# so a multi-type run does not repeat it five times. Section labels only apply
-# to files that exist; a missing host syntax degrades to plain text.
+# so a multi-type run does not repeat it.
 for i in "${!files[@]}"; do
   f="${files[$i]}"
   label="${labels[$i]}"
@@ -127,7 +123,7 @@ for i in "${!files[@]}"; do
   echo
 done
 
-# Legend once, from the rule fixture so rule/recipe groups are defined.
+# Legend once, from the rule fixture so recipe groups are defined.
 nvim "${base[@]}" \
   --cmd "set runtimepath^=$root" \
   --cmd 'set termguicolors' \

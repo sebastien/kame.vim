@@ -1,28 +1,34 @@
-# Syntax fixture: comments, includes, definitions, expressions, references.
-(include ./rules/common.kmk)
-(include? "lib/extra.km")
-VERSION = "1.2.3"
+# Syntax fixture: definitions, expressions, rules, and recipes.
 MODE ?= "debug"
 CHECKS += [./tests/unit]
-SOURCES = (wildcard ./src/*.c)
-MESSAGE = "building @(count SOURCES) for @{TARGET}"
-COUNT = 1_000
-RATIO = -3.5
-CONFIG = [name: "app" path: ./src workers: 4 enabled: :true]
-REF = project.name
-SLICE = files.1..4
-KEYS = config.{host,port}
-ROOTED = @{PATH_SRC}/sh/**/*.sh
-TOOL = x/uv
-SECTION = ((f _0 _1))
-CMP = (< a b)
-CAPTURE = $(git rev-parse --short HEAD)
-(source object) = (replace ./{**}/{*}.c ./build/{_0}/{_1}.o object)
-(single) = (echo ./single.c)
-
-// Second comment style.
-PATTERN = ./src/{name:*}.c
-RESOURCE = (resource "file:///tmp/x")
-TIME = (now)
-TICKS = (monotonic)
-PARSED = (parse-args [] args)
+import ./lib/toolchain as tools
+from ./lib/config import mode-name as configured-mode
+include ./rules/common.km
+include? ./local.km
+SOURCES = files ./src/**/*.c
+mapper = (x => x + 1)
+pairs = SOURCES |> map (ends? ".c" _)
+selected = if ready then SOURCES else []
+config = {name: "app", "key with space": 1, ...defaults}
+root = @{module/dir}/templates/page.kmt
+def object-path source = match source
+	./src/{path:**}.c => ./build/@{path}.o
+	else => nil
+task deploy {environment} : ./seed
+	let workspace = line $(mktemp -d)
+	set env/MODE = mode
+	for source from ./paths.list :lines
+		echo source=$source
+	defer rm -rf $workspace
+rule ./build/{name}.o : ./src/{name}.c ; {shell: "bash", env: {MODE: mode}}
+	@if minify
+	strip @{inputs.0}
+	@end
+rule always (index-path) : @{pages} | ./stamp, ./generated
+	cp @{inputs.0} @{outputs.0}
+for variant in ["debug", "release"]
+	rule ./build/@{variant}/{name}.o : ./src/{name}.c
+		cc -c $inputs.0 -o $outputs.0
+task comments
+	echo https://example.com # a comment
+flags = [true, false, nil, :release]

@@ -1,15 +1,14 @@
-# Showcase: every Kame value-program feature in one file.
-# Second line of # comments.
-(include ./rules/common.kmk)
-(include "./lib/extra.km")
-(include? ../shared/base.kmk)
-
-VERSION = "1.2.3"
+# Showcase: Kame program definitions and expressions.
 MODE ?= "debug"
 CHECKS += [./tests/unit]
-ROOTED = @{PATH_SRC}/sh/**/*.sh
-FLAG! = :debug
-READY? = :true
+import ./lib/toolchain as tools
+from ./lib/config import mode-name as configured-mode
+include ./rules/common.km
+include? ./local.km
+
+SOURCES = files ./src/**/*.c
+FLAG = true
+NOTHING = nil
 COUNT = 1_000
 RATIO = -3.5
 HEX = 0xFF_00
@@ -17,29 +16,27 @@ BIN = 0b1010_01
 OCT = 0o755
 FLOAT = 1.5e-3
 SYM = :my-symbol
-BOOLS = [:true :false :nil]
-NAMES = (wildcard ./src/*.c)
-MESSAGE = "building @(count SOURCES) for @(TARGET) with @{VERSION}"
-SPACED = "{( COMPUTED )} is literal text"
-ESCAPED = "show \@not-a-template"
-CONFIG = [name: "app" path: ./src workers: 4 enabled: :true mode: :release]
-PIPE = (filter SOURCES | (match ./{**}/{*}.c))
-SPECIAL = (def greeting "hi")
-OTHER = (let x 1)
-MORE = (eval COMPUTED)
-COND = (? FLAG "yes" "no")
-REF = project.name
-REF_SLICE = files.1..4
-REF_KEYS = config.{host,port}
-SECTION = ((f _0 _1 _2))
-GLOB_REF = (sub ./{**}/{*}.c ./build/{_0}/{_1}.o)
-COMPARISONS = [(< 1 2) (>= 3 4) (== a b) (!= a b) (= a b) (> a b) (<= a b)]
-SPECIAL_FORMS = [(if READY "yes" "no") (and A B) (or A B)]
+SIGNS = [:+up, :-down]
+MAPPER = (x => x + 1)
+REST = (first rest... => first)
+PAIRS = SOURCES |> map (ends? ".c" _)
+JOINED = ["./main.c", "./util.c"] |> map (name => uppercase name) |> join ", "
+SELECTED = if FLAG then SOURCES else []
+CONFIG = {name: "app", "key with space": 1, ...defaults}
+ROOT = @{module/dir}/templates/page.kmt
 CAPTURE = $(git rev-parse --short HEAD)
-VERBATIM = """
-raw text with @if(not-a-directive) and $(literal)
-"""
-(source object) = (sub ./{**}/{*}.c ./build/{_0}/{_1}.o object)
-(single) = (nop ./single.c)
+OUTCOME = $?(git status --short)
+ASYNC = $&(watch-assets)
 
-// Second comment style.
+def object-path source = match source
+	./src/{path:**}.c => ./build/@{path}.o
+	else => nil
+
+def build source output
+	cc -c $source -o $output
+
+VERBATIM = """
+raw @{literal} and @@ text
+"""
+
+# The end.

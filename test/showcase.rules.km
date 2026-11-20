@@ -1,0 +1,31 @@
+# Showcase: rule headers, metadata, captures, and action recipes.
+task default : ./build/app
+
+rule ./build/{name}.o ./build/{name}.d : ./src/{name}.c | ./stamp, ./generated
+	cc -c $inputs.0 -o $outputs.0
+
+rule always ./build/stamp : ./src/*.c
+	date > $outputs.0
+
+rule (index-path) : @{pages}
+	cat $...inputs > $outputs.0
+
+rule ./build/config.json : ./config.km = json config
+
+task cached lint : ./src/*.c ; {env: {MODE: mode}}
+	lint $...inputs
+
+task deploy {environment} {region=us-east} : ./seed
+	set env/MODE = mode
+	for source from ./paths.list :lines
+		echo source=$source
+	defer rm -rf $workspace
+
+service dev
+	npm run dev
+
+for variant in ["debug", "release"]
+	rule ./build/@{variant}/{name}.o : ./src/{name}.c
+		cc -c $inputs.0 -o $outputs.0
+
+generate (SOURCES |> map object-rule)

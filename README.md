@@ -32,32 +32,29 @@ Plug 'sebastien/kame.vim'
 
 ## Source layers
 
-The suffix names the independently usable outer language. Detection sets
-`filetype=kame` for every suffix and records the layer in `b:kame_lang`.
+One source language covers values, declarations, actions, and templates. The
+suffix selects the context; detection sets `filetype=kame` for every suffix and
+records the layer in `b:kame_lang`.
 
 | Suffix | Layer | Contents |
 | --- | --- | --- |
-| `.km` | `expr` | value program: comments, blank lines, includes, lazy definitions, and one or more top-level expressions |
-| `.kmd` | `expr` | the same value-program grammar (multiple expressions) |
-| `.kmk` | `rule` | the value layer plus rule headers, target templates, and recipes |
-| `Kamefile` | `rule` | the same rule-program grammar, selected by file name |
-| `.kash` | `kash` | the Kash command and process language |
+| `.km` | `expr` | Kame program: lazy definitions, imports, includes, rules, tasks, services, and declaration-time control flow |
+| `.kame` | `expr` | the same Kame program grammar |
+| `Kamefile` | `expr` | the same program grammar, selected by file name |
+| `.kash` | `kash` | Kash program: the top level is an action block |
 | `.ksh` | `kash` | exactly the same grammar as `.kash` |
+| `.kmt` | `template` | document template: host text with `@` directives and `@{...}` interpolation |
 
-The layer identifiers (`expr`, `rule`, `kash`) match the value recorded in
-`b:kame_lang`. The three layers compose: value expressions appear in rule
-inputs and definitions; `$(COMMAND)` is a value atom whose contents are a Kash
-process; Kash embeds value expressions through `(EXPRESSION)` and value
-references through `$REFERENCE`, `${REFERENCE}`, and explicit argv spread
-`$...REFERENCE`. External-shell recipe text and expression strings additionally
-use the document-template forms `@{reference}` and `@(EXPRESSION)`. Rule headers
-and recipes are only highlighted in a rule program (`.kmk`, `Kamefile`); a value
-program (`.km`/`.kmd`) is expression-only.
+The layer identifiers (`expr`, `kash`, `template`) match the value recorded in
+`b:kame_lang`. The contexts share one expression grammar: value and declaration
+contexts use expressions, Kash action blocks use command syntax, and document
+templates stay literal except for directives and interpolation. `$(COMMAND)`,
+`$?(COMMAND)`, and `$&(COMMAND)` contain an action block in every layer.
 
-Rule sources `Makefile.kmk` and `make.kmk` also match Vim's built-in Makefile
-detection, and `.ksh` matches its shell detection, so the plugin registers the
-suffixes with Neovim's `vim.filetype` matcher at a higher priority and also
-ships an `ftdetect` override for Vim.
+Kame discovery names (`Makefile.km`, `make.km`) also match Vim's built-in
+Makefile detection, and `.ksh` matches its shell detection, so the plugin
+registers the suffixes with Neovim's `vim.filetype` matcher at a higher priority
+and also ships an `ftdetect` override for Vim.
 
 ## Usage
 
@@ -66,9 +63,9 @@ Commands:
 - `:KameFormat` saves the current file and formats it in place with
   `kame do fmt -i`.
 - `:KameLint` saves the current file and parses it with
-  `kame do parse`. The parser language follows the suffix: `--lang script` for
-  `.km`/`.kmd`/`.kmk` and `--lang kash` for `.kash`/`.ksh`. Parse errors are
-  listed in the quickfix window.
+  `kame do parse`. The parser language follows the suffix: `--lang km` for
+  `.km`/`.kame`/`Kamefile`, `--lang kash` for `.kash`/`.ksh`, and
+  `--lang template` for `.kmt`. Parse errors are listed in the quickfix window.
 
 Set `g:kame_command` to the executable path if Kame is not on `PATH`:
 
@@ -81,20 +78,21 @@ analysis.
 
 ## Recipe highlighting
 
-Rule-program recipes (`.kmk`, `Kamefile`) default to a **hybrid** view: Kash
-command syntax plus the Kame document-template overlay. This deliberately
-assumes a Kash-style rule body so both `$x/uv` and `@{x/uv}` are visible while
-editing. It is an editor convenience, not a claim that every rule runs as direct
-Kash.
+A rule, task, or service body is a **Kash action block** by default. In that
+mode the same Kash command and statement highlighting is used everywhere, so
+`$inputs.0`, `(EXPRESSION)`, control statements, pipelines, and redirections are
+visible inside recipe bodies.
 
-Set `g:kame_recipe_lang` before the syntax loads to choose the recipe language:
+A build-wide `SHELL = "bash"` or per-rule `; {shell: "bash"}` selects a foreign
+shell. Kame renders that body as a document template, so only `@{EXPR}`,
+`@@`, and `@if`/`@for`/... directives are Kame; the rest belongs to the shell.
+Set `g:kame_recipe_lang` before the syntax loads to choose how indented bodies
+are highlighted:
 
 ```vim
-let g:kame_recipe_lang = 'hybrid'  " default: Kash plus @{...}/@(...) template forms
-let g:kame_recipe_lang = 'shell'   " external shell recipes with syntax/sh.vim
-let g:kame_recipe_lang = 'kash'    " strict direct Kash, no template pass
-let g:kame_recipe_lang = 'kame'    " value-producing [shell: kame] recipes
-let g:kame_recipe_lang = 'none'    " keep recipes plain
+let g:kame_recipe_lang = 'kash'   " default: Kash action blocks
+let g:kame_recipe_lang = 'shell'  " foreign-shell bodies with syntax/sh.vim
+let g:kame_recipe_lang = 'none'   " keep indented bodies plain
 ```
 
 `shell` embeds Vim's shell syntax and picks its dialect from the same globals
@@ -104,28 +102,27 @@ as `syntax/sh.vim`:
 let g:is_bash = 1
 ```
 
-`kash` highlights direct Kash without a template pass. In that mode, `@(...)`,
-selectors, `@if` directives, and `@{...}` in raw recipe text are not template
-syntax; use `$reference`, `(EXPRESSION)`, `$(COMMAND)`, and Kash control
-statements instead. `kame` highlights a value-producing `[shell: kame]` body as
-one Kame expression.
-
-When `g:kame_recipe_lang` is unset, a buffer-level `SHELL = kash` or
-`SHELL = kame` selects the matching recipe layer for the file, and any other
-`SHELL = ...` selects external-shell highlighting:
+When `g:kame_recipe_lang` is unset, a buffer-level `SHELL = "..."` or
+`SHELL = kash` selects the matching recipe layer for the file:
 
 ```kame
-SHELL = kash
+SHELL = "bash"
+
+task build ; {shell: "sh"}
+	@if release
+	cc -O2 @{inputs.0} -o @{outputs.0}
+	@else
+	cc -g @{inputs.0} -o @{outputs.0}
+	@end
 ```
 
-Per-rule metadata such as `; [shell: kash]` or `; [shell: kame]` is still not
-inspected by the highlighter; set `g:kame_recipe_lang` when one file mixes
-recipe interpreters. In `.ktmpl` documents, `@raw` blocks are not suppressed:
-the template overlay uses `containedin=ALL` so it can reach arbitrary host
-regions and matches. Recipe `@raw` blocks are suppressed.
+Per-rule metadata is not inspected by the highlighter; set `g:kame_recipe_lang`
+when one file mixes interpreters. `g:kame_no_shell_syntax = 1` is the legacy
+spelling of `'none'` and is still honored when `g:kame_recipe_lang` is unset.
 
-`g:kame_no_shell_syntax = 1` is the legacy spelling of `'none'` and is still
-honored when `g:kame_recipe_lang` is unset.
+In a `.kmt` template, directives are recognized as whole lines (plain style)
+and as complete host-comment directives (`<!-- @if x -->`, `# @for ...`,
+`// @end`, ...). `@raw` bodies stay literal through `@end`.
 
 ## Highlighting
 
@@ -133,68 +130,67 @@ Highlight groups and their default links:
 
 | Group | Default link | Highlights |
 | --- | --- | --- |
-| `kameComment` | `Comment` | `#` and `//` comments (Kash: `#` only) |
-| `kameDirective` | `Include` | `include`, `include?` |
-| `kameIncludePath` | `Directory` | path after `include` / `include?` |
-| `kameRuleKind` | `Keyword` | `task`, `service` |
-| `kameRuleModifier` | `Keyword` | `always` |
-| `kameRuleSeparator` | `Operator` | the `:` or `<-` in a rule header |
+| `kameComment` | `Comment` | `#` comments (never `//`, and never in templates) |
+| `kameDirective` | `Include` | `include`, `include?`, `import`, `from`, `export`, `as` |
+| `kameRuleKeyword` | `Keyword` | `rule`, `task`, `service` |
+| `kameRuleModifier` | `Keyword` | `always`, `cached` |
+| `kameRuleSeparator` | `Operator` | the `:` and `;` in a rule header |
 | `kameRuleOrderOnly` | `Operator` | the `\|` before order-only inputs |
 | `kameRuleGroupSeparator` | `Delimiter` | `,` input sequence groups |
-| `kameTargetName` | `Function` | logical target names |
-| `kamePath` | `Directory` | `./`, `../`, and `/` paths |
-| `kameCapture` | `Type` | `{...}` target and pattern groups |
+| `kameRuleBodyOperator` | `Operator` | `=` expression bodies in a rule header |
+| `kameTargetName` | `Function` | task and service target names |
+| `kamePath` | `Directory` | `./`, `../`, `/`, `~/`, and `@{...}/` paths |
+| `kameCapture` | `Type` | `{...}` pattern and target groups |
 | `kameCaptureName` | `Identifier` | capture names |
-| `kameCapturePattern` | `SpecialChar` | `{name:*}` pattern part |
+| `kameCapturePattern` | `SpecialChar` | `{name:*}`, `{path:**}`, `{*}` |
+| `kameCaptureRegex` | `SpecialChar` | `{name:~REGEX}` |
 | `kameCaptureDefault` | `String` | `{region=us-east}` default text |
-| `kameSymbol` | `Constant` | `:symbol` |
-| `kameBoolean` | `Boolean` | `:true`, `:false`, `:nil` |
-| `kameNumber` | `Number` | numbers |
-| `kameName` | `Identifier` | names |
-| `kameReference` | `Identifier` | `project.name`, `files.1..4`, `config.{host,port}`, `x/uv`, `inputs/changed` |
-| `kamePlaceholder` | `Special` | `_`, `__`, `_0` placeholder atoms |
+| `kameSymbol` | `Constant` | `:symbol`, `:+name`, `:-name` |
+| `kameBoolean` | `Boolean` | `true`, `false`, `nil` |
+| `kameNumber` | `Number` | numbers, including a literal leading `-` |
+| `kameName` | `Identifier` | other names |
+| `kameVariable` | `Constant` | `UPPER_CASE` environment-style names |
+| `kameFunctionCall` | `Function` | lowercase and kebab-case names |
+| `kameStdlibFunction` | `Special` | standard-library operations |
+| `kameReference` | `Identifier` | `project.name`, `files.0`, `x/uv`, `env/NAME`, `module/dir` |
+| `kamePlaceholder` | `Special` | `_`, `__`, `___`, `_N` placeholder atoms |
 | `kameRecordKey` | `Identifier` | record keys such as `name:` |
-| `kameSpecialForm` | `Statement` | `def`, `let`, `eval`, `if`, `and`, `or`, `match`, `with`, `?`, `run!`, `pipe!`, `await`, `finally!` |
-| `kameOperator` | `Operator` | `\|` |
-| `kameComparisonOperator` | `Operator` | `=`, `==`, `!=`, `<`, `>`, `<=`, `>=` |
+| `kameKeyword` | `Statement` | `def`, `let`, `set`, `if`, `then`, `match`, `for`, `while`, `return`, `yield`, `exit`, `defer`, `with`, `stream`, ... |
+| `kameLogicalOperator` | `Operator` | `and`, `or` |
+| `kameOperator` | `Operator` | `+`, `-`, `*`, `/`, `%` |
+| `kameComparisonOperator` | `Operator` | `==`, `!=`, `<`, `>`, `<=`, `>=` |
+| `kameLambdaOperator` | `Operator` | `=>` |
+| `kameSpreadOperator` | `Operator` | `...` |
+| `kameValuePipe` | `Operator` | `\|>` |
+| `kameFallbackOperator` | `Operator` | `??` |
 | `kameDelimiter` | `Delimiter` | `(` and `[` delimiters |
-| `kameString` | `String` | quoted and verbatim strings |
-| `kameTemplateExpression` | `Special` | `@(...)` expansions |
-| `kameTemplateDelimiter` | `Special` | `@(` and `)` |
-| `kameTemplateReference` | `PreProc` | `@{reference}` lookups, including `@{x/uv}` tool references |
-| `kameSelectorInput` | `Special` | `@<...` selectors, including `@<?` |
-| `kameSelectorOutput` | `PreProc` | `@>...` selectors |
-| `kameSelectorArgument` | `Identifier` | `@_`, `@*`, `@#`, `@N` selectors |
-| `kameEscape` | `SpecialChar` | `\@`, `\\`, `\{`, `\}` escapes |
-| `kameCommandSubstitution` | `Special` | `$(COMMAND)` substitution |
-| `kameCommandSubstitutionDelimiter` | `Special` | `$(` and `)` |
-| `kameRecipeDirective` | `PreProc` | recipe directive lines `@if`, `@else`, `@end`, ... |
-| `kameTemplateDirective` | `PreProc` | document-template directive lines `@if`, `@for`, `@end`, ... |
-| `kameKashKeyword` | `Conditional` | `if`, `elif`, `else`, `match`, `case`, `defn`, `let`, `defer`, `return`, `exit`, `for`, `while`, `break`, `continue`, `with`, `stream` |
+| `kameString` | `String` | `"..."`, `'...'`, and `"""..."""` strings |
+| `kameTemplateInterpolation` | `Special` | `@{EXPR}` interpolation |
+| `kameTemplateDelimiter` | `Special` | `@{` and `}` |
+| `kameTemplateDirective` | `PreProc` | template directives `@if`, `@for`, `@end`, ... |
+| `kameTemplateDirectiveLabel` | `Keyword` | the label after `@end` |
+| `kameTemplateTrim` | `SpecialChar` | template whitespace trim markers |
+| `kameEscape` | `SpecialChar` | `@@` and backslash escapes |
+| `kameCommandSubstitution` | `Special` | `$(COMMAND)`, `$?(COMMAND)`, `$&(COMMAND)` |
+| `kameCommandSubstitutionDelimiter` | `Special` | the capture delimiters |
+| `kameKashBuiltin` | `Function` | `cd`, `wait`, `kill`, `out!`, `err!`, ... |
 | `kameKashCommand` | `Function` | executable words |
-| `kameKashGroupCommand` | `Function` | executables inside `(...)` process groups |
 | `kameKashOption` | `Identifier` | `-c`, `--watch`, `-O2` |
-| `kameKashSetupKey` | `Keyword` | `:cwd`, `:timeout`, `:accept-exit`, `:NODE_ENV` |
+| `kameKashSetupKey` | `Keyword` | `cwd:`, `timeout:`, `env:`, `accept-exit:`, `NODE_ENV:` |
+| `kameKashReference` | `Identifier` | `$ref`, `${ref}`, `$project.name`, `$...list` |
 | `kameKashPipeline` | `Operator` | `\|` |
 | `kameKashSequential` | `Operator` | `&&`, `\|\|` |
-| `kameKashRedirection` | `Operator` | `<`, `>`, `>>`, `2>`, `2>>`, `2>&1`, `>@` |
+| `kameKashRedirection` | `Operator` | `<`, `>`, `>>`, `2>`, `2>&1`, `>@` |
 | `kameKashChannel` | `Special` | `>&out`, `>&err`, `>&name`, `<&name`, `&name` |
-| `kameKashChannelName` | `Special` | the name in `stream NAME` |
+| `kameKashAcceptance` | `Operator` | `?` |
+| `kameKashAsync` | `Operator` | `&` |
 | `kameKashMux` | `Operator` | `\|(merge)`, `\|(frame)`, `\|(tee)`, ... |
 | `kameKashMuxKey` | `Keyword` | `:buffer`, `:items`, `:order`, `:append`, ... |
-| `kameKashAcceptance` | `Operator` | `?` |
-| `kameKashRecovery` | `Operator` | `??` |
-| `kameKashAsync` | `Operator` | `&` |
-| `kameKashSeparator` | `Delimiter` | `;` |
-| `kameKashReference` | `Identifier` | `$ref`, `${ref}`, `$project.name`, `$x/uv`, `$...CMD` |
-| `kameKashString` | `String` | Kash `"..."` words with substitutions |
-| `kameDefinitionName` | `Define` | definition and binder names |
-| `kameDefinitionOperator` | `Operator` | `=`, `?=`, `+=` in a definition |
+| `kameKashStreamName` | `Special` | the name in `stream NAME` |
+| `kameDefinitionName` | `Define` | definition, `let`, `set`, and loop binder names |
+| `kameDefinitionOperator` | `Operator` | `=`, `?=`, `+=` definitions and assignments |
 | `kameFunctionName` | `Function` | function definition name |
 | `kameFunctionParameter` | `Identifier` | function parameters |
-| `kameVariable` | `Constant` | UPPER_CASE variable references |
-| `kameFunctionCall` | `Function` | lowercase and kebab-case function references |
-| `kameStdlibFunction` | `Special` | standard-library operation names (including build effects) |
 
 Override any of them with `:hi! link` or `:hi`, for example:
 
@@ -204,13 +200,12 @@ hi! link kameTargetName Identifier
 
 ## Testing
 
-`test/run.sh` loads `test/fixture.km` (value program) and `test/fixture.kmk`
-(rule program) in headless Neovim and asserts the highlight group at
-representative positions, exercising each recipe mode (the default `hybrid`,
-`kash`, `shell`, `none`, and the legacy `g:kame_no_shell_syntax`), plus buffer-level
-`SHELL = kash` / `SHELL = kame` overrides. It also checks `test/fixture.kash`
-and verifies filetype detection for `Makefile.kmk`, `Kamefile`, `.kash`, `.ksh`,
-and `.kmd`. It requires Neovim on `PATH`:
+`test/run.sh` loads `test/fixture.km` (program, rules, and recipes),
+`test/fixture.kash` (action block), `test/fixture.kmt` (document template), and
+`test/fixture.shell.km` (foreign-shell recipe) in headless Neovim and asserts
+the highlight group at representative positions. It also verifies filetype
+detection for `Kamefile`, `Makefile.km`, `make.km`, `.km`, `.kame`, `.kash`,
+`.ksh`, and `.kmt`. It requires Neovim on `PATH`:
 
 ```sh
 ./test/run.sh
@@ -224,8 +219,8 @@ to `runtimepath`:
 
 ```sh
 ./test/preview.sh                              # every type in turn
-./test/preview.sh --type=rule                  # one type
-./test/preview.sh test/showcase.kash           # one file
+./test/preview.sh --type=kash                  # one type
+./test/preview.sh test/showcase.kmt            # one file
 ./test/preview.sh --recipe-lang=shell --clean  # shell recipes, isolated
 ```
 
@@ -233,14 +228,10 @@ With no argument every type is shown, each under a `== type ==` header:
 
 | Type | Fixture | Layer |
 | --- | --- | --- |
-| `expr` | `test/showcase.km` | `expr` value program |
-| `script` | `test/showcase.script.kmk` | `rule` layer, script composition (definitions and expressions) |
-| `rule` | `test/showcase.kmk` | `rule` layer, headers, captures, and recipes |
-| `template` | `test/showcase.paml.ktmpl` | `template` layer over a PAML host |
-| `kash` | `test/showcase.kash` | `kash` process language |
+| `expr` | `test/showcase.km` | `expr` program |
+| `rule` | `test/showcase.rules.km` | `expr` program focused on rules and recipes |
+| `template` | `test/showcase.kmt` | `template` document |
+| `kash` | `test/showcase.kash` | `kash` action block |
 
-`script` and `rule` are both `.kmk` scripts (the `rule` layer); they differ in
-what they emphasize. `--type` selects one, and a file argument previews one
-file. The template section needs the host's syntax on `'runtimepath'` (PAML
-here); without it, the host text renders uncolored and the Kame overlay still
-shows. `--recipe-lang`, `--no-shell`, and `--clean` behave as before.
+`--type` selects one, and a file argument previews one file.
+`--recipe-lang`, `--no-shell`, and `--clean` behave as before.
